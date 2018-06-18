@@ -5,9 +5,9 @@
 #include "neural/layers/Relu.hpp"
 #include "neural/layers/Linear.hpp"
 #include "neural/util/Gradient.hpp"
+#include "neural/util/Mapping.hpp"
 
 #include <Eigen/Eigen>
-
 
 TEST_CASE("Testing ReLu", "[relu]" ) {
     constexpr int inputSize = 10;
@@ -16,12 +16,10 @@ TEST_CASE("Testing ReLu", "[relu]" ) {
     // Create input and output tensors
     Eigen::TensorFixedSize<neural::Derivative, Eigen::Sizes<batchSize, inputSize>> x, expectedDerivativesX;
     x.setValues({{-10, -7, -5, -3, 0, 1, 3,  5,  7, 10}});
-
-    neural::Relu<neural::Derivative, inputSize, batchSize> relu;
-
     expectedDerivativesX.setValues({{0, 0, 0, 0, 1, 1, 1, 1, 1, 1}});
 
     // Perform operations
+    neural::Relu<neural::Derivative, inputSize, batchSize> relu;
     neural::Relu<neural::Derivative, inputSize, batchSize>::OutputTensor d = relu.forward(x);
 
     // Evaluate gradient
@@ -35,15 +33,41 @@ TEST_CASE("Testing ReLu", "[relu]" ) {
     }
 }
 
+TEST_CASE("Testing tensor -> matrix/vector mapping functions", "[mapping]" ) {
+    constexpr int inputSize = 3;
+    constexpr int batchSize = 2;
+
+    // Create tensor
+    Eigen::TensorFixedSize<double, Eigen::Sizes<batchSize, inputSize>> tensor;
+    tensor.setValues({{10, 10, 10}, {-30, -30, -30}});
+
+    const auto map1 = neural::TensorSliceToVector<inputSize, batchSize>(tensor, 0);
+    const auto map2 = neural::TensorSliceToVector<inputSize, batchSize>(tensor, 1);
+    const auto map1Const = neural::ConstTensorSliceToVector<inputSize, batchSize>(tensor, 0);
+    const auto map2Const = neural::ConstTensorSliceToVector<inputSize, batchSize>(tensor, 1);
+    const auto map3 = neural::ConstTensorToMatrix<batchSize, inputSize>(tensor);
+
+    for (int i = 0; i < inputSize; i++) {
+        REQUIRE( tensor(0, i) == map1(i) );
+        REQUIRE( tensor(0, i) == map1Const(i) );
+        REQUIRE( tensor(1, i) == map2(i) );
+        REQUIRE( tensor(1, i) == map2Const(i) );
+
+        for (int j = 0; j < batchSize; j++) {
+            REQUIRE( tensor(j, i) == map3(j, i) );
+        }
+    }
+}
+
 TEST_CASE("Testing backprop", "[backprop]" ) {
     constexpr int inputSize = 10;
     constexpr int numNeurons = 5;
     constexpr int numNeurons2 = 30;
-    constexpr int batchSize = 1;
+    constexpr int batchSize = 2;
 
     // Create input and output tensors
     Eigen::TensorFixedSize<neural::Derivative, Eigen::Sizes<batchSize, inputSize>> input;
-    input.setValues({{30, -3, -2, -1, 0, 1, 3,  5,  7, 10}});
+    input.setValues({{30, -3, -2, -1, 0, 1, 3,  5,  7, 10}, {30, -3, -2, -1, 0, 1, 3,  5,  7, 10}});
 
     neural::Linear<neural::Derivative, inputSize, numNeurons, batchSize> linear;
     neural::Relu<neural::Derivative, numNeurons2, batchSize> relu;
@@ -61,6 +85,7 @@ TEST_CASE("Testing backprop", "[backprop]" ) {
         y(0).grad();
 
         linear.updateWeights();
+        linear2.updateWeights();
         stan::math::set_zero_all_adjoints();
     }
 }

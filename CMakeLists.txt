@@ -17,7 +17,7 @@ target_include_directories(${PROJECT_NAME} INTERFACE ${STAN_MATH_PATH}/lib/eigen
 target_include_directories(${PROJECT_NAME} INTERFACE ${STAN_MATH_PATH}/lib/boost_1.64.0)
 
 # Set C++11
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-unused-local-typedefs")
 add_definitions("-Wall")
 
 # Prepare Catch library for test executable

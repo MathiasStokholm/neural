@@ -14,6 +14,11 @@
 
 namespace neural {
     using Derivative = stan::math::var;
+    using BaseType = stan::math::var::Scalar;
+
+    BaseType getGradient(const Derivative &derivative) {
+        return derivative.adj();
+    }
 }
 
 #endif //NEURAL_GRADIENT_HPP

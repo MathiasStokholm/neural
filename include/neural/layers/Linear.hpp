@@ -13,9 +13,10 @@
 #include <iostream>
 #include "Layer.hpp"
 #include "neural/util/Gradient.hpp"
+#include "neural/util/Mapping.hpp"
 
 namespace neural {
-    template <typename Dtype, int InputSize, int NumNeurons, int BatchSize>
+    template <typename Dtype, unsigned int InputSize, unsigned int NumNeurons, unsigned int BatchSize>
     class Linear: Layer<Dtype, Eigen::Sizes<BatchSize, InputSize>, Eigen::Sizes<BatchSize, NumNeurons>> {
     public:
         using InputDims = Eigen::Sizes<BatchSize, InputSize>;
@@ -31,20 +32,24 @@ namespace neural {
         }
 
         OutputTensor forward(const InputTensor &input) const override {
+            // Create output
+            OutputTensor result;
+
             // This is the standard Eigen::Tensor way of doing generalized matrix multiplication, but
             // the auto diff libraries don't like this yet!
             // static Eigen::array<Eigen::IndexPair<int>, 1> productDims = {Eigen::IndexPair<int>(1, 0)};
             // const OutputTensor result = input.contract(m_weights, productDims);
 
-            // Map to Eigen matrix
-            Eigen::Map<const Eigen::Matrix<Dtype, InputSize, 1>> mappedTensor(input.data(), InputSize);
-            Eigen::Map<const Eigen::Matrix<Dtype, InputSize, NumNeurons>> mappedWeights(m_weights.data(), InputSize, NumNeurons);
+            // Instead, we apply the operations to each input in batch
+            const auto mappedWeights = ConstTensorToMatrix<InputSize, NumNeurons>(m_weights).transpose();
+            for (unsigned int batch = 0; batch < BatchSize; batch++) {
+                // Map tensors to Eigen matrices
+                const auto mappedTensor = neural::ConstTensorSliceToVector<InputSize, BatchSize>(input, batch);
+                auto mappedOutput = neural::TensorSliceToVector<NumNeurons, BatchSize>(result, batch);
 
-            // Perform y1 = Ax
-            auto matrixResult = (mappedWeights.transpose() * mappedTensor).eval();
-
-            // Map back to tensor
-            Eigen::TensorMap<OutputTensor> result(matrixResult.data(), BatchSize, NumNeurons);
+                // Perform y1 = Ax
+                mappedOutput.noalias() = mappedWeights * mappedTensor;
+            }
 
             if (!m_useBias) {
                 return result;
@@ -66,19 +71,16 @@ namespace neural {
         typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights() override {
             // Backprop is available, adjust weights and biases
             const double learningRate = 1e-4;
-            auto getGradient = [] (const Q &x) {
-                return x.adj();
-            };
 
             // Update weights
-            const auto weightGrad = m_weights.unaryExpr(getGradient);
+            const auto weightGrad = m_weights.unaryExpr(std::cref(getGradient));
             m_weights -= learningRate * weightGrad;
 
             if (m_useBias) {
                 const double biasLearningRate = 1e-4;
 
                 // Update biases
-                const auto biasGrad = m_biases.unaryExpr(getGradient);
+                const auto biasGrad = m_biases.unaryExpr(std::cref(getGradient));
                 m_biases -= biasLearningRate * biasGrad;
             }
         }
