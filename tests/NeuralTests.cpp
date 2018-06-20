@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include "neural/Tensor.hpp"
 #include "neural/layers/Relu.hpp"
+#include "neural/layers/Tanh.hpp"
 #include "neural/layers/Linear.hpp"
 #include "neural/util/Gradient.hpp"
 #include "neural/util/Mapping.hpp"
@@ -137,16 +138,16 @@ TEST_CASE("Testing XOR", "[xor]" ) {
     // Create network
     auto net = neural::make_net(
             neural::Linear<neural::Derivative, InputTensor::ChannelSize, 8, batchSize>(),
-            neural::Relu<neural::Derivative, 8, batchSize>(),
+            neural::Tanh<neural::Derivative, 8, batchSize>(),
             neural::Linear<neural::Derivative, 8, 1, batchSize>(),
-            neural::Relu<neural::Derivative, OutputTensor::ChannelSize, batchSize>()
+            neural::Tanh<neural::Derivative, OutputTensor::ChannelSize, batchSize>()
     );
 
     // Create loss function
     neural::MeanSquaredError<neural::Derivative, OutputTensor::ChannelSize, batchSize> error;
 
     // Train
-    for (int i = 0; i < 10000; i++) {
+    for (int i = 0; i < 500; i++) {
         // Get input/output tensors
         int index = rng.getNext();
         Eigen::array<int, 2> offsets = {index, 0};
@@ -166,6 +167,21 @@ TEST_CASE("Testing XOR", "[xor]" ) {
         // Update weights
         net.backward(loss);
 
+        // Print results
         std::cout << "Input: " << x << ", prediction: " << prediction << ", truth: " << y << std::endl;
+    }
+
+    // Test network
+    for (int i = 0; i < 4; i++) {
+        Eigen::array<int, 2> offsets = {i, 0};
+        Eigen::array<int, 2> extents = {1, inputSize};
+        InputTensor x = xs.slice(offsets, extents).eval();
+
+        offsets = {i, 0};
+        extents = {1, outputSize};
+        OutputTensor y = ys.slice(offsets, extents).eval();
+
+        const auto prediction = net.forward(x);
+        REQUIRE( static_cast<int>(std::round(prediction(0).val())) == static_cast<int>(y(0).val()) );
     }
 }

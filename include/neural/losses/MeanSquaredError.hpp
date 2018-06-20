@@ -17,7 +17,6 @@ namespace neural {
     class MeanSquaredError {
     public:
         using InputTensor = Tensor<Dtype, BatchSize, InputSize>;
-        using OutputTensor = Tensor<Dtype, BatchSize, 1>;
 
         Dtype compute(const InputTensor &predictions, const InputTensor &labels) const {
             const typename InputTensor::EigenType &predictionsEigen = predictions;

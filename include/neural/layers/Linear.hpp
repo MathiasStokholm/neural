@@ -13,6 +13,7 @@
 #include "neural/util/Gradient.hpp"
 #include "neural/util/Mapping.hpp"
 #include "neural/Tensor.hpp"
+#include "neural/initializers/NormalInitializer.hpp"
 
 namespace neural {
     template <typename Dtype, unsigned int InputSize, unsigned int NumNeurons, unsigned int BatchSize>
@@ -22,8 +23,8 @@ namespace neural {
         using OutputTensor = Tensor<Dtype, BatchSize, NumNeurons>;
 
         Linear() {
-            m_weights.setConstant(Dtype(1.1));
-            m_biases.setConstant(Dtype(0.5));
+            m_weights.template setRandom<NormalInitializer<Dtype>>();
+            m_biases.template setRandom<NormalInitializer<Dtype>>();
         }
 
         OutputTensor forward(const InputTensor &input) const {
@@ -59,14 +60,14 @@ namespace neural {
         template<class Q = Dtype>
         typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights() {
             // Backprop is available, adjust weights and biases
-            const double learningRate = 1e-2;
+            const double learningRate = 0.1;
 
             // Update weights
             const auto weightGrad = m_weights.unaryExpr(std::cref(getGradient));
             m_weights -= learningRate * weightGrad;
 
             if (m_useBias) {
-                const double biasLearningRate = 1e-2;
+                const double biasLearningRate = 0.1;
 
                 // Update biases
                 const auto biasGrad = m_biases.unaryExpr(std::cref(getGradient));
@@ -75,7 +76,7 @@ namespace neural {
         }
 
     private:
-        bool m_useBias = true;
+        bool m_useBias = false;
         Tensor<Dtype, InputSize, NumNeurons> m_weights;
         Tensor<Dtype, 1, NumNeurons> m_biases;
     };
