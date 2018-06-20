@@ -22,8 +22,8 @@ namespace neural {
         using OutputTensor = Tensor<Dtype, BatchSize, NumNeurons>;
 
         Linear() {
-            m_weights.setConstant(Dtype(30));
-            m_biases.setConstant(Dtype(10));
+            m_weights.setConstant(Dtype(1.1));
+            m_biases.setConstant(Dtype(0.5));
         }
 
         OutputTensor forward(const InputTensor &input) const {
@@ -59,14 +59,14 @@ namespace neural {
         template<class Q = Dtype>
         typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights() {
             // Backprop is available, adjust weights and biases
-            const double learningRate = 1e-4;
+            const double learningRate = 1e-2;
 
             // Update weights
             const auto weightGrad = m_weights.unaryExpr(std::cref(getGradient));
             m_weights -= learningRate * weightGrad;
 
             if (m_useBias) {
-                const double biasLearningRate = 1e-4;
+                const double biasLearningRate = 1e-2;
 
                 // Update biases
                 const auto biasGrad = m_biases.unaryExpr(std::cref(getGradient));

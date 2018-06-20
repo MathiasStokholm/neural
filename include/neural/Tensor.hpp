@@ -13,14 +13,20 @@
 #include <unsupported/Eigen/CXX11/Tensor>
 
 namespace neural {
-    template <typename Dtype, unsigned int BatchSize, unsigned int ChannelSize>
-    class Tensor: public Eigen::TensorFixedSize<Dtype, Eigen::Sizes<BatchSize, ChannelSize>> {
+    template <typename Dtype_, unsigned int BatchSize_, unsigned int ChannelSize_>
+    class Tensor: public Eigen::TensorFixedSize<Dtype_, Eigen::Sizes<BatchSize_, ChannelSize_>> {
     public:
+        typedef Dtype_ Dtype;
+        enum {
+            BatchSize = BatchSize_,
+            ChannelSize = ChannelSize_
+        };
+        using EigenType = Eigen::TensorFixedSize<Dtype, Eigen::Sizes<BatchSize, ChannelSize>>;
+
         Tensor() = default;
 
         template <typename Derived>
-        Tensor(const Eigen::TensorBase<Derived>& tensor):
-                Eigen::TensorFixedSize<Dtype, Eigen::Sizes<BatchSize, ChannelSize>>::TensorFixedSize(tensor) {}
+        Tensor(const Eigen::TensorBase<Derived>& tensor): EigenType::TensorFixedSize(tensor) {}
     };
 }
 

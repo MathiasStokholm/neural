@@ -7,6 +7,8 @@
 #include "neural/util/Gradient.hpp"
 #include "neural/util/Mapping.hpp"
 #include "neural/Net.hpp"
+#include "neural/util/RNG.hpp"
+#include "neural/losses/MeanSquaredError.hpp"
 
 #include <Eigen/Eigen>
 
@@ -25,8 +27,9 @@ TEST_CASE("Testing Net", "[net]" ) {
     );
     const auto result = net.forward(x);
 
-    // Evaluate gradient
-    net.backward(result);
+    // Evaluate gradient (loss is just sum)
+    Eigen::Tensor<neural::Derivative, 0> loss = result.sum();
+    net.backward(loss(0), false);
 
     for (unsigned int i = 0; i < inputSize; i++) {
         const auto grad = x(i).adj();
@@ -112,5 +115,57 @@ TEST_CASE("Testing backprop", "[backprop]" ) {
         linear.updateWeights();
         linear2.updateWeights();
         stan::math::set_zero_all_adjoints();
+    }
+}
+
+TEST_CASE("Testing XOR", "[xor]" ) {
+    constexpr int inputSize = 2;
+    constexpr int batchSize = 1;
+    constexpr int outputSize = 1;
+
+    // XOR dataset
+    neural::Tensor<neural::Derivative, 4, 2> xs;
+    xs.setValues({{0, 0}, {0, 1}, {1, 0}, {1, 1}});
+    neural::Tensor<neural::Derivative, 4, 1> ys;
+    ys.setValues({{0}, {1}, {1}, {0}});
+    neural::RNG rng(0, 3);
+
+    // Data types used for training
+    using InputTensor = neural::Tensor<neural::Derivative, batchSize, inputSize>;
+    using OutputTensor = neural::Tensor<neural::Derivative, batchSize, outputSize>;
+
+    // Create network
+    auto net = neural::make_net(
+            neural::Linear<neural::Derivative, InputTensor::ChannelSize, 8, batchSize>(),
+            neural::Relu<neural::Derivative, 8, batchSize>(),
+            neural::Linear<neural::Derivative, 8, 1, batchSize>(),
+            neural::Relu<neural::Derivative, OutputTensor::ChannelSize, batchSize>()
+    );
+
+    // Create loss function
+    neural::MeanSquaredError<neural::Derivative, OutputTensor::ChannelSize, batchSize> error;
+
+    // Train
+    for (int i = 0; i < 10000; i++) {
+        // Get input/output tensors
+        int index = rng.getNext();
+        Eigen::array<int, 2> offsets = {index, 0};
+        Eigen::array<int, 2> extents = {1, inputSize};
+        InputTensor x = xs.slice(offsets, extents).eval();
+
+        offsets = {index, 0};
+        extents = {1, outputSize};
+        OutputTensor y = ys.slice(offsets, extents).eval();
+
+        // Perform forward
+        const auto prediction = net.forward(x);
+
+        // Determine error
+        auto loss = error.compute(prediction, y);
+
+        // Update weights
+        net.backward(loss);
+
+        std::cout << "Input: " << x << ", prediction: " << prediction << ", truth: " << y << std::endl;
     }
 }

@@ -19,6 +19,10 @@ namespace neural {
     BaseType getGradient(const Derivative &derivative) {
         return derivative.adj();
     }
+
+    void setGradientsZero() {
+        stan::math::set_zero_all_adjoints();
+    }
 }
 
 #endif //NEURAL_GRADIENT_HPP

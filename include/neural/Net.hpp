@@ -85,13 +85,16 @@ namespace neural {
         }
 
         template<class Q = Dtype>
-        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type backward(const OutputTensor &loss) {
-            // TODO: Avoid having to sum the loss in order to apply the grad update
-            Eigen::Tensor<Derivative, 0> y = loss.sum();
-            y(0).grad();
+        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type backward(Q &loss, bool zeroGradients=true) {
+            loss.grad();
 
             // Perform weight updates
             detail::backward(m_layers);
+
+            // Zero all gradients
+            if (zeroGradients) {
+                setGradientsZero();
+            }
         }
 
     private:
