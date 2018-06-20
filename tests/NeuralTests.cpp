@@ -1,7 +1,7 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <Eigen/Core>
-#include <unsupported/Eigen/CXX11/Tensor>
+#include "neural/Tensor.hpp"
 #include "neural/layers/Relu.hpp"
 #include "neural/layers/Linear.hpp"
 #include "neural/util/Gradient.hpp"
@@ -15,7 +15,7 @@ TEST_CASE("Testing Net", "[net]" ) {
     constexpr int batchSize = 1;
 
     // Create input and output tensors
-    Eigen::TensorFixedSize<neural::Derivative, Eigen::Sizes<batchSize, inputSize>> x, expectedDerivativesX;
+    neural::Tensor<neural::Derivative, batchSize, inputSize> x, expectedDerivativesX;
     x.setValues({{-10, -7, -5, -3, 0, 1, 3,  5,  7, 10}});
     expectedDerivativesX.setValues({{0, 0, 0, 0, 1, 1, 1, 1, 1, 1}});
 
@@ -39,7 +39,7 @@ TEST_CASE("Testing ReLu", "[relu]" ) {
     constexpr int batchSize = 1;
 
     // Create input and output tensors
-    Eigen::TensorFixedSize<neural::Derivative, Eigen::Sizes<batchSize, inputSize>> x, expectedDerivativesX;
+    neural::Tensor<neural::Derivative, batchSize, inputSize> x, expectedDerivativesX;
     x.setValues({{-10, -7, -5, -3, 0, 1, 3,  5,  7, 10}});
     expectedDerivativesX.setValues({{0, 0, 0, 0, 1, 1, 1, 1, 1, 1}});
 
@@ -63,7 +63,7 @@ TEST_CASE("Testing tensor -> matrix/vector mapping functions", "[mapping]" ) {
     constexpr int batchSize = 2;
 
     // Create tensor
-    Eigen::TensorFixedSize<double, Eigen::Sizes<batchSize, inputSize>> tensor;
+    neural::Tensor<double, batchSize, inputSize> tensor;
     tensor.setValues({{10, 10, 10}, {-30, -30, -30}});
 
     const auto map1 = neural::TensorSliceToVector<inputSize, batchSize>(tensor, 0);
@@ -91,7 +91,7 @@ TEST_CASE("Testing backprop", "[backprop]" ) {
     constexpr int batchSize = 2;
 
     // Create input and output tensors
-    Eigen::TensorFixedSize<neural::Derivative, Eigen::Sizes<batchSize, inputSize>> input;
+    neural::Tensor<neural::Derivative, batchSize, inputSize> input;
     input.setValues({{30, -3, -2, -1, 0, 1, 3,  5,  7, 10}, {30, -3, -2, -1, 0, 1, 3,  5,  7, 10}});
 
     neural::Linear<neural::Derivative, inputSize, numNeurons, batchSize> linear;

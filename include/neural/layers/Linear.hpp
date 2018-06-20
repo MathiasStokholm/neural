@@ -10,28 +10,23 @@
 #ifndef NEURAL_LINEAR_HPP
 #define NEURAL_LINEAR_HPP
 
-#include <iostream>
-#include "Layer.hpp"
 #include "neural/util/Gradient.hpp"
 #include "neural/util/Mapping.hpp"
+#include "neural/Tensor.hpp"
 
 namespace neural {
     template <typename Dtype, unsigned int InputSize, unsigned int NumNeurons, unsigned int BatchSize>
-    class Linear: public Layer<Dtype, Eigen::Sizes<BatchSize, InputSize>, Eigen::Sizes<BatchSize, NumNeurons>> {
+    class Linear {
     public:
-        using InputDims = Eigen::Sizes<BatchSize, InputSize>;
-        using OutputDims = Eigen::Sizes<BatchSize, NumNeurons>;
-        using WeightDims = Eigen::Sizes<InputSize, NumNeurons>;
-        using BiasDims = Eigen::Sizes<1, NumNeurons>;
-        using typename Layer<Dtype, Eigen::Sizes<BatchSize, InputSize>, Eigen::Sizes<BatchSize, NumNeurons>>::InputTensor;
-        using typename Layer<Dtype, Eigen::Sizes<BatchSize, InputSize>, Eigen::Sizes<BatchSize, NumNeurons>>::OutputTensor;
+        using InputTensor = Tensor<Dtype, BatchSize, InputSize>;
+        using OutputTensor = Tensor<Dtype, BatchSize, NumNeurons>;
 
         Linear() {
             m_weights.setConstant(Dtype(30));
             m_biases.setConstant(Dtype(10));
         }
 
-        OutputTensor forward(const InputTensor &input) const override {
+        OutputTensor forward(const InputTensor &input) const {
             // Create output
             OutputTensor result;
 
@@ -44,8 +39,8 @@ namespace neural {
             const auto mappedWeights = ConstTensorToMatrix<InputSize, NumNeurons>(m_weights).transpose();
             for (unsigned int batch = 0; batch < BatchSize; batch++) {
                 // Map tensors to Eigen matrices
-                const auto mappedTensor = neural::ConstTensorSliceToVector<InputSize, BatchSize>(input, batch);
-                auto mappedOutput = neural::TensorSliceToVector<NumNeurons, BatchSize>(result, batch);
+                const auto mappedTensor = ConstTensorSliceToVector<InputSize, BatchSize>(input, batch);
+                auto mappedOutput = TensorSliceToVector<NumNeurons, BatchSize>(result, batch);
 
                 // Perform y1 = Ax
                 mappedOutput.noalias() = mappedWeights * mappedTensor;
@@ -62,13 +57,7 @@ namespace neural {
         }
 
         template<class Q = Dtype>
-        typename std::enable_if<!std::is_same<Q, Derivative>::value, void>::type updateWeights() override {
-            // Regular value updateWeights() - Backprop not supported in this case
-            throw std::runtime_error("Backprop only supported for Derivative type");
-        }
-
-        template<class Q = Dtype>
-        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights() override {
+        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights() {
             // Backprop is available, adjust weights and biases
             const double learningRate = 1e-4;
 
@@ -87,8 +76,8 @@ namespace neural {
 
     private:
         bool m_useBias = true;
-        Eigen::TensorFixedSize<Dtype, WeightDims> m_weights;
-        Eigen::TensorFixedSize<Dtype, BiasDims> m_biases;
+        Tensor<Dtype, InputSize, NumNeurons> m_weights;
+        Tensor<Dtype, 1, NumNeurons> m_biases;
     };
 }
 

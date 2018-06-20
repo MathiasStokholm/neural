@@ -10,18 +10,23 @@
 #ifndef NEURAL_RELU_HPP
 #define NEURAL_RELU_HPP
 
-#include "Layer.hpp"
 #include "neural/util/Gradient.hpp"
+#include "neural/Tensor.hpp"
 
 namespace neural {
     template <typename Dtype, int InputSize, int BatchSize>
-    class Relu: public Layer<Dtype, Eigen::Sizes<BatchSize, InputSize>, Eigen::Sizes<BatchSize, InputSize>> {
+    class Relu {
     public:
-        using typename Layer<Dtype, Eigen::Sizes<BatchSize, InputSize>, Eigen::Sizes<BatchSize, InputSize>>::InputTensor;
-        using typename Layer<Dtype, Eigen::Sizes<BatchSize, InputSize>, Eigen::Sizes<BatchSize, InputSize>>::OutputTensor;
+        using InputTensor = Tensor<Dtype, BatchSize, InputSize>;
+        using OutputTensor = Tensor<Dtype, BatchSize, InputSize>;
 
-        OutputTensor forward(const InputTensor &input) const override {
+        OutputTensor forward(const InputTensor &input) const {
             return input.cwiseMax(Dtype(0));
+        }
+
+        template<class Q = Dtype>
+        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights() {
+            // No weights to adjust here
         }
     };
 }
