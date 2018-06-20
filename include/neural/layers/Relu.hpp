@@ -14,8 +14,8 @@
 #include "neural/util/Gradient.hpp"
 
 namespace neural {
-    template <typename Dtype, unsigned int InputSize, unsigned int BatchSize>
-    class Relu: Layer<Dtype, Eigen::Sizes<BatchSize, InputSize>, Eigen::Sizes<BatchSize, InputSize>> {
+    template <typename Dtype, int InputSize, int BatchSize>
+    class Relu: public Layer<Dtype, Eigen::Sizes<BatchSize, InputSize>, Eigen::Sizes<BatchSize, InputSize>> {
     public:
         using typename Layer<Dtype, Eigen::Sizes<BatchSize, InputSize>, Eigen::Sizes<BatchSize, InputSize>>::InputTensor;
         using typename Layer<Dtype, Eigen::Sizes<BatchSize, InputSize>, Eigen::Sizes<BatchSize, InputSize>>::OutputTensor;

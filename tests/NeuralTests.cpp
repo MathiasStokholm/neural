@@ -6,8 +6,33 @@
 #include "neural/layers/Linear.hpp"
 #include "neural/util/Gradient.hpp"
 #include "neural/util/Mapping.hpp"
+#include "neural/Net.hpp"
 
 #include <Eigen/Eigen>
+
+TEST_CASE("Testing Net", "[net]" ) {
+    constexpr int inputSize = 10;
+    constexpr int batchSize = 1;
+
+    // Create input and output tensors
+    Eigen::TensorFixedSize<neural::Derivative, Eigen::Sizes<batchSize, inputSize>> x, expectedDerivativesX;
+    x.setValues({{-10, -7, -5, -3, 0, 1, 3,  5,  7, 10}});
+    expectedDerivativesX.setValues({{0, 0, 0, 0, 1, 1, 1, 1, 1, 1}});
+
+    auto net = neural::make_net(
+            neural::Relu<neural::Derivative, inputSize, batchSize>(),
+            neural::Relu<neural::Derivative, inputSize, batchSize>()
+    );
+    const auto result = net.forward(x);
+
+    // Evaluate gradient
+    net.backward(result);
+
+    for (unsigned int i = 0; i < inputSize; i++) {
+        const auto grad = x(i).adj();
+        REQUIRE( expectedDerivativesX(i) == grad );
+    }
+}
 
 TEST_CASE("Testing ReLu", "[relu]" ) {
     constexpr int inputSize = 10;
@@ -20,7 +45,7 @@ TEST_CASE("Testing ReLu", "[relu]" ) {
 
     // Perform operations
     neural::Relu<neural::Derivative, inputSize, batchSize> relu;
-    neural::Relu<neural::Derivative, inputSize, batchSize>::OutputTensor d = relu.forward(x);
+    const auto d = relu.forward(x);
 
     // Evaluate gradient
     Eigen::Tensor<neural::Derivative, 0> y = d.sum();

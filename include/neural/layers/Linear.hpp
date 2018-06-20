@@ -17,7 +17,7 @@
 
 namespace neural {
     template <typename Dtype, unsigned int InputSize, unsigned int NumNeurons, unsigned int BatchSize>
-    class Linear: Layer<Dtype, Eigen::Sizes<BatchSize, InputSize>, Eigen::Sizes<BatchSize, NumNeurons>> {
+    class Linear: public Layer<Dtype, Eigen::Sizes<BatchSize, InputSize>, Eigen::Sizes<BatchSize, NumNeurons>> {
     public:
         using InputDims = Eigen::Sizes<BatchSize, InputSize>;
         using OutputDims = Eigen::Sizes<BatchSize, NumNeurons>;
