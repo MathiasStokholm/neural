@@ -5,16 +5,24 @@ project(neural)
 
 # Define options
 set(STAN_MATH_PATH "/home/mathias/software/math" CACHE STRING "Path to the Stan Math repository")
+option(INFERENCE_ONLY "Whether to turn off AutoDiff (training), this removes Stan Math as a dependency" OFF)
 
 # Create neural library
 add_library(${PROJECT_NAME} INTERFACE)
 target_include_directories(${PROJECT_NAME} INTERFACE include)
 
-# Stan math and dependencies
-target_include_directories(${PROJECT_NAME} INTERFACE ${STAN_MATH_PATH})
-target_include_directories(${PROJECT_NAME} INTERFACE ${STAN_MATH_PATH}/lib/cvodes_2.9.0/include)
-target_include_directories(${PROJECT_NAME} INTERFACE ${STAN_MATH_PATH}/lib/eigen_3.3.3)
-target_include_directories(${PROJECT_NAME} INTERFACE ${STAN_MATH_PATH}/lib/boost_1.64.0)
+if (${INFERENCE_ONLY})
+    # Inference only using Eigen
+    find_package(Eigen3 REQUIRED)
+    target_include_directories(${PROJECT_NAME} INTERFACE ${EIGEN3_INCLUDE_DIR})
+else()
+    # AutoDiff (training) using Stan Math and dependencies
+    target_include_directories(${PROJECT_NAME} INTERFACE ${STAN_MATH_PATH})
+    target_include_directories(${PROJECT_NAME} INTERFACE ${STAN_MATH_PATH}/lib/cvodes_2.9.0/include)
+    target_include_directories(${PROJECT_NAME} INTERFACE ${STAN_MATH_PATH}/lib/eigen_3.3.3)
+    target_include_directories(${PROJECT_NAME} INTERFACE ${STAN_MATH_PATH}/lib/boost_1.64.0)
+    add_definitions(-DAUTO_DIFF_ENABLED)
+endif()
 
 # Set C++11
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-unused-local-typedefs")

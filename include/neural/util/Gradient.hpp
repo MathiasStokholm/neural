@@ -10,6 +10,7 @@
 #ifndef NEURAL_GRADIENT_HPP
 #define NEURAL_GRADIENT_HPP
 
+#ifdef AUTO_DIFF_ENABLED
 #include <stan/math.hpp>
 
 namespace neural {
@@ -25,4 +26,15 @@ namespace neural {
     }
 }
 
+#else
+
+// Inference-only mode - autodiff/gradients are not available
+// Forward declarations to keep compiler happy (these can never be called due to std::enable_if usage)
+namespace neural {
+    using Derivative = void;
+    void getGradient();
+    void setGradientsZero();
+}
+
+#endif //AUTO_DIFF_ENABLED
 #endif //NEURAL_GRADIENT_HPP

@@ -13,7 +13,55 @@
 
 #include <Eigen/Eigen>
 
-TEST_CASE("Testing Net", "[net]" ) {
+TEST_CASE("Testing tensor -> matrix/vector mapping functions", "[mapping]" ) {
+    constexpr int inputSize = 3;
+    constexpr int batchSize = 2;
+
+    // Create tensor
+    neural::Tensor<double, batchSize, inputSize> tensor;
+    tensor.setValues({{10, 10, 10}, {-30, -30, -30}});
+
+    const auto map1 = neural::TensorSliceToVector<inputSize, batchSize>(tensor, 0);
+    const auto map2 = neural::TensorSliceToVector<inputSize, batchSize>(tensor, 1);
+    const auto map1Const = neural::ConstTensorSliceToVector<inputSize, batchSize>(tensor, 0);
+    const auto map2Const = neural::ConstTensorSliceToVector<inputSize, batchSize>(tensor, 1);
+    const auto map3 = neural::ConstTensorToMatrix<batchSize, inputSize>(tensor);
+
+    for (int i = 0; i < inputSize; i++) {
+        REQUIRE( tensor(0, i) == map1(i) );
+        REQUIRE( tensor(0, i) == map1Const(i) );
+        REQUIRE( tensor(1, i) == map2(i) );
+        REQUIRE( tensor(1, i) == map2Const(i) );
+
+        for (int j = 0; j < batchSize; j++) {
+            REQUIRE( tensor(j, i) == map3(j, i) );
+        }
+    }
+}
+
+TEST_CASE("Testing net forward", "[net_forward]" ) {
+    constexpr int inputSize = 10;
+    constexpr int batchSize = 1;
+
+    // Create input and output tensors
+    neural::Tensor<double, batchSize, inputSize> x, expectedValues;
+    x.setValues({{-10, -7, -5, -3, 0, 1, 3,  5,  7, 10}});
+    expectedValues.setValues({{0, 0, 0, 0, 0, 1, 3,  5,  7, 10}});
+
+    auto net = neural::make_net(
+            neural::Relu<double, inputSize, batchSize>(),
+            neural::Relu<double, inputSize, batchSize>(),
+            neural::Relu<double, inputSize, batchSize>()
+    );
+    const auto result = net.forward(x);
+
+    for (unsigned int i = 0; i < inputSize; i++) {
+        REQUIRE( expectedValues(i) == result(i) );
+    }
+}
+
+#ifdef AUTO_DIFF_ENABLED
+TEST_CASE("Testing Net", "[net_backward]" ) {
     constexpr int inputSize = 10;
     constexpr int batchSize = 1;
 
@@ -59,32 +107,6 @@ TEST_CASE("Testing ReLu", "[relu]" ) {
     for (unsigned int i = 0; i < inputSize; i++) {
         const auto grad = x(i).adj();
         REQUIRE( expectedDerivativesX(i) == grad );
-    }
-}
-
-TEST_CASE("Testing tensor -> matrix/vector mapping functions", "[mapping]" ) {
-    constexpr int inputSize = 3;
-    constexpr int batchSize = 2;
-
-    // Create tensor
-    neural::Tensor<double, batchSize, inputSize> tensor;
-    tensor.setValues({{10, 10, 10}, {-30, -30, -30}});
-
-    const auto map1 = neural::TensorSliceToVector<inputSize, batchSize>(tensor, 0);
-    const auto map2 = neural::TensorSliceToVector<inputSize, batchSize>(tensor, 1);
-    const auto map1Const = neural::ConstTensorSliceToVector<inputSize, batchSize>(tensor, 0);
-    const auto map2Const = neural::ConstTensorSliceToVector<inputSize, batchSize>(tensor, 1);
-    const auto map3 = neural::ConstTensorToMatrix<batchSize, inputSize>(tensor);
-
-    for (int i = 0; i < inputSize; i++) {
-        REQUIRE( tensor(0, i) == map1(i) );
-        REQUIRE( tensor(0, i) == map1Const(i) );
-        REQUIRE( tensor(1, i) == map2(i) );
-        REQUIRE( tensor(1, i) == map2Const(i) );
-
-        for (int j = 0; j < batchSize; j++) {
-            REQUIRE( tensor(j, i) == map3(j, i) );
-        }
     }
 }
 
@@ -185,3 +207,4 @@ TEST_CASE("Testing XOR", "[xor]" ) {
         REQUIRE( static_cast<int>(std::round(prediction(0).val())) == static_cast<int>(y(0).val()) );
     }
 }
+#endif //AUTO_DIFF_ENABLED
