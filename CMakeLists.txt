@@ -22,11 +22,13 @@ else()
     target_include_directories(${PROJECT_NAME} INTERFACE ${STAN_MATH_PATH}/lib/eigen_3.3.3)
     target_include_directories(${PROJECT_NAME} INTERFACE ${STAN_MATH_PATH}/lib/boost_1.64.0)
     add_definitions(-DAUTO_DIFF_ENABLED)
+
+    # Flag used to silence warnings in Boost 1.64
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-local-typedefs")
 endif()
 
 # Set C++11
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-unused-local-typedefs")
-add_definitions("-Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
 
 # Prepare Catch library for test executable
 add_library(Catch INTERFACE)
