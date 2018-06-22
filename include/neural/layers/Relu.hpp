@@ -10,8 +10,8 @@
 #ifndef NEURAL_RELU_HPP
 #define NEURAL_RELU_HPP
 
-#include "neural/util/Gradient.hpp"
-#include "neural/Tensor.hpp"
+#include <neural/util/Gradient.hpp>
+#include <neural/Tensor.hpp>
 
 namespace neural {
     template <typename Dtype, int InputSize, int BatchSize>

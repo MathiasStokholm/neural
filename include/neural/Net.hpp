@@ -16,7 +16,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
-#include "neural/util/Gradient.hpp"
+#include <neural/util/Gradient.hpp>
 
 namespace neural {
     namespace detail {

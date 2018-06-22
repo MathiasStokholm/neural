@@ -10,7 +10,7 @@
 #ifndef NEURAL_MEANSQUAREDERROR_HPP
 #define NEURAL_MEANSQUAREDERROR_HPP
 
-#include "neural/Tensor.hpp"
+#include <neural/Tensor.hpp>
 
 namespace neural {
     template <typename Dtype, unsigned int InputSize, unsigned int BatchSize>

@@ -1,15 +1,15 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <Eigen/Core>
-#include "neural/Tensor.hpp"
-#include "neural/layers/Relu.hpp"
-#include "neural/layers/Tanh.hpp"
-#include "neural/layers/Linear.hpp"
-#include "neural/util/Gradient.hpp"
-#include "neural/util/Mapping.hpp"
-#include "neural/Net.hpp"
-#include "neural/util/RNG.hpp"
-#include "neural/losses/MeanSquaredError.hpp"
+#include <neural/Tensor.hpp>
+#include <neural/layers/Relu.hpp>
+#include <neural/layers/Tanh.hpp>
+#include <neural/layers/Linear.hpp>
+#include <neural/util/Gradient.hpp>
+#include <neural/util/Mapping.hpp>
+#include <neural/Net.hpp>
+#include <neural/util/RNG.hpp>
+#include <neural/losses/MeanSquaredError.hpp>
 
 #include <Eigen/Eigen>
 
@@ -61,7 +61,7 @@ TEST_CASE("Testing net forward", "[net_forward]" ) {
 }
 
 #ifdef AUTO_DIFF_ENABLED
-TEST_CASE("Testing Net", "[net_backward]" ) {
+TEST_CASE("Testing net backward", "[net_backward]" ) {
     constexpr int inputSize = 10;
     constexpr int batchSize = 1;
 
@@ -120,9 +120,9 @@ TEST_CASE("Testing backprop", "[backprop]" ) {
     neural::Tensor<neural::Derivative, batchSize, inputSize> input;
     input.setValues({{30, -3, -2, -1, 0, 1, 3,  5,  7, 10}, {30, -3, -2, -1, 0, 1, 3,  5,  7, 10}});
 
-    neural::Linear<neural::Derivative, inputSize, numNeurons, batchSize> linear;
+    neural::Linear<neural::Derivative, inputSize, numNeurons, batchSize, true> linear;
     neural::Relu<neural::Derivative, numNeurons2, batchSize> relu;
-    neural::Linear<neural::Derivative, numNeurons, numNeurons2, batchSize> linear2;
+    neural::Linear<neural::Derivative, numNeurons, numNeurons2, batchSize, true> linear2;
 
     // Perform operations
     Eigen::Tensor<neural::Derivative, 0> y;
@@ -159,9 +159,9 @@ TEST_CASE("Testing XOR", "[xor]" ) {
 
     // Create network
     auto net = neural::make_net(
-            neural::Linear<neural::Derivative, InputTensor::ChannelSize, 8, batchSize>(),
+            neural::Linear<neural::Derivative, InputTensor::ChannelSize, 8, batchSize, false>(),
             neural::Tanh<neural::Derivative, 8, batchSize>(),
-            neural::Linear<neural::Derivative, 8, 1, batchSize>(),
+            neural::Linear<neural::Derivative, 8, 1, batchSize, false>(),
             neural::Tanh<neural::Derivative, OutputTensor::ChannelSize, batchSize>()
     );
 

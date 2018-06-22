@@ -10,21 +10,29 @@
 #ifndef NEURAL_LINEAR_HPP
 #define NEURAL_LINEAR_HPP
 
-#include "neural/util/Gradient.hpp"
-#include "neural/util/Mapping.hpp"
-#include "neural/Tensor.hpp"
-#include "neural/initializers/NormalInitializer.hpp"
+#include <neural/util/Gradient.hpp>
+#include <neural/util/Mapping.hpp>
+#include <neural/Tensor.hpp>
+#include <neural/initializers/NormalInitializer.hpp>
 
 namespace neural {
-    template <typename Dtype, unsigned int InputSize, unsigned int NumNeurons, unsigned int BatchSize>
+    template <typename Dtype, unsigned int InputSize, unsigned int NumNeurons, unsigned int BatchSize, bool UseBias>
     class Linear {
     public:
         using InputTensor = Tensor<Dtype, BatchSize, InputSize>;
         using OutputTensor = Tensor<Dtype, BatchSize, NumNeurons>;
+        using WeightsTensor = Tensor<Dtype, InputSize, NumNeurons>;
+        using BiasesTensor = Tensor<Dtype, 1, NumNeurons>;
+        enum {
+            HasBias = UseBias
+        };
 
         Linear() {
             m_weights.template setRandom<NormalInitializer<Dtype>>();
-            m_biases.template setRandom<NormalInitializer<Dtype>>();
+
+            if (HasBias) {
+                m_biases.template setRandom<NormalInitializer<Dtype>>();
+            }
         }
 
         OutputTensor forward(const InputTensor &input) const {
@@ -47,7 +55,7 @@ namespace neural {
                 mappedOutput.noalias() = mappedWeights * mappedTensor;
             }
 
-            if (!m_useBias) {
+            if (!HasBias) {
                 return result;
             }
 
@@ -66,7 +74,7 @@ namespace neural {
             const auto weightGrad = m_weights.unaryExpr(std::cref(getGradient));
             m_weights -= learningRate * weightGrad;
 
-            if (m_useBias) {
+            if (HasBias) {
                 const double biasLearningRate = 0.1;
 
                 // Update biases
@@ -76,9 +84,8 @@ namespace neural {
         }
 
     private:
-        bool m_useBias = false;
-        Tensor<Dtype, InputSize, NumNeurons> m_weights;
-        Tensor<Dtype, 1, NumNeurons> m_biases;
+        WeightsTensor m_weights;
+        BiasesTensor m_biases;
     };
 }
 
