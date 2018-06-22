@@ -75,7 +75,7 @@ TEST_CASE("Testing net backward", "[net_backward]" ) {
             neural::Relu<neural::Derivative, inputSize, batchSize>(),
             neural::Relu<neural::Derivative, inputSize, batchSize>()
     );
-    net.attachOptimizer(neural::OptimizerFactory(0.1));
+    net.attachOptimizer(neural::OptimizerFactory::SGD(0.1));
 
     const auto result = net.forward(x);
 
@@ -128,7 +128,7 @@ TEST_CASE("Testing backprop", "[backprop]" ) {
     neural::Linear<neural::Derivative, numNeurons, numNeurons2, batchSize> linear2;
 
     // Attach optimizers
-    neural::OptimizerFactory optimizerFactory(0.1);
+    neural::OptimizerFactory optimizerFactory = neural::OptimizerFactory::SGD(0.1);
     linear.attachOptimizer(optimizerFactory);
     linear2.attachOptimizer(optimizerFactory);
 
@@ -172,7 +172,7 @@ TEST_CASE("Testing XOR", "[xor]" ) {
             neural::Linear<neural::Derivative, 8, 1, batchSize, false>(),
             neural::Tanh<neural::Derivative, OutputTensor::ChannelSize, batchSize>()
     );
-    net.attachOptimizer(neural::OptimizerFactory(0.1, 0.0));
+    net.attachOptimizer(neural::OptimizerFactory::SGD(0.1, 0.0));
 
     // Create loss function
     neural::MeanSquaredError<neural::Derivative, OutputTensor::ChannelSize, batchSize> error;

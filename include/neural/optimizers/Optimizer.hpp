@@ -14,7 +14,9 @@ namespace neural {
     template <typename Tensor>
     class Optimizer {
     public:
-        virtual Tensor update(const Tensor &tensor) = 0;
+        using GradTensor = neural::Tensor<double, Tensor::BatchSize, Tensor::ChannelSize>;
+
+        virtual GradTensor update(const Tensor &tensor) = 0;
     };
 }
 

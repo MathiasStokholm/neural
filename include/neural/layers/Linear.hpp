@@ -89,7 +89,7 @@ namespace neural {
         }
 
     private:
-        Tensor<Dtype, InputSize, NumNeurons> m_weights;
+        WeightsTensor m_weights;
         std::unique_ptr<Optimizer<WeightsTensor>> m_weightsOptimizer;
         BiasesTensor m_biases;
         std::unique_ptr<Optimizer<BiasesTensor>> m_biasOptimizer;

@@ -15,14 +15,16 @@
 
 namespace neural {
     template <typename Tensor>
-    class SGD: public Optimizer<Tensor> {
+    class SGDOptimizer: public Optimizer<Tensor> {
     public:
-        SGD(double learningRate, double momentum):
+        using GradTensor = typename Optimizer<Tensor>::GradTensor;
+
+        SGDOptimizer(double learningRate, double momentum):
                 m_learningRate(learningRate), m_momentum(momentum), m_lastUpdate() {
             m_lastUpdate.setZero();
         }
 
-        Tensor update(const Tensor &tensor) override {
+        GradTensor update(const Tensor &tensor) override {
             const auto grad = tensor.unaryExpr(std::cref(getGradient));
             m_lastUpdate = m_momentum * m_lastUpdate + m_learningRate * grad;
             return m_lastUpdate;
@@ -31,7 +33,7 @@ namespace neural {
     private:
         double m_learningRate;
         double m_momentum;
-        Tensor m_lastUpdate;
+        GradTensor m_lastUpdate;
     };
 }
 
