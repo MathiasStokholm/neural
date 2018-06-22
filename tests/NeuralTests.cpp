@@ -5,6 +5,7 @@
 #include <neural/layers/Relu.hpp>
 #include <neural/layers/Tanh.hpp>
 #include <neural/layers/Linear.hpp>
+#include <neural/layers/Sigmoid.hpp>
 #include <neural/util/Gradient.hpp>
 #include <neural/util/Mapping.hpp>
 #include <neural/Net.hpp>
@@ -37,6 +38,36 @@ TEST_CASE("Testing tensor -> matrix/vector mapping functions", "[mapping]" ) {
         for (int j = 0; j < batchSize; j++) {
             REQUIRE( tensor(j, i) == map3(j, i) );
         }
+    }
+}
+
+TEST_CASE("Testing activation functions", "[activations]" ) {
+    neural::Tensor<double, 1, 5> x, expectedValues;
+    x.setValues({{-10, -5, -1, 0, 1, 5, 10}});
+
+    // Test ReLu
+    expectedValues.setValues({{0, 0, 0, 0, 1, 5, 10}});
+    neural::Relu<double, 5, 1> relu;
+    auto result = relu.forward(x);
+    for (unsigned int i = 0; i < 5; i++) {
+        REQUIRE( expectedValues(i) == result(i) );
+    }
+
+    // Test Sigmoid
+    expectedValues.setValues({{4.53978687e-05, 6.69285092e-03, 2.68941421e-01, 5.00000000e-01, 7.31058579e-01,
+                               9.93307149e-01, 9.99954602e-01}});
+    neural::Sigmoid<double, 5, 1> sigmoid;
+    result = sigmoid.forward(x);
+    for (unsigned int i = 0; i < 5; i++) {
+        REQUIRE( expectedValues(i) == Approx(result(i)) );
+    }
+
+    // Test Tanh
+    expectedValues.setValues({{-1, -0.9999092, -0.76159416, 0, 0.76159416, 0.9999092, 1}});
+    neural::Tanh<double, 5, 1> tanh;
+    result = tanh.forward(x);
+    for (unsigned int i = 0; i < 5; i++) {
+        REQUIRE( expectedValues(i) == Approx(result(i)) );
     }
 }
 

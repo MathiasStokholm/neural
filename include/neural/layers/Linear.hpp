@@ -36,7 +36,8 @@ namespace neural {
             }
         }
 
-        void attachOptimizer(const OptimizerFactory &factory) {
+        template<class Q = Dtype>
+        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type attachOptimizer(const OptimizerFactory &factory) {
             m_weightsOptimizer = factory.createOptimizer(m_weights);
             if (HasBias) {
                 m_biasOptimizer = factory.createOptimizer(m_biases);

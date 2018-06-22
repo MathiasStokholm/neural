@@ -1,14 +1,14 @@
 /**
-* \file Relu.hpp
+* \file Sigmoid.hpp
 *
 * \brief //TODO
 *
-* \date   Jun 13, 2018
+* \date   Jun 23, 2018
 * \author Mathias Bøgh Stokholm
 */
 
-#ifndef NEURAL_RELU_HPP
-#define NEURAL_RELU_HPP
+#ifndef NEURAL_SIGMOID_HPP
+#define NEURAL_SIGMOID_HPP
 
 #include <neural/util/Gradient.hpp>
 #include <neural/Tensor.hpp>
@@ -16,13 +16,13 @@
 
 namespace neural {
     template <typename Dtype, int InputSize, int BatchSize>
-    class Relu {
+    class Sigmoid {
     public:
         using InputTensor = Tensor<Dtype, BatchSize, InputSize>;
         using OutputTensor = Tensor<Dtype, BatchSize, InputSize>;
 
         OutputTensor forward(const InputTensor &input) const {
-            return input.cwiseMax(Dtype(0));
+            return (Dtype(0.5) * (Dtype(0.5) * input).tanh() + Dtype(0.5)).eval();
         }
 
         template<class Q = Dtype>
@@ -37,4 +37,4 @@ namespace neural {
     };
 }
 
-#endif //NEURAL_RELU_HPP
+#endif //NEURAL_SIGMOID_HPP

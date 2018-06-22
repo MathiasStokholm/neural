@@ -12,6 +12,7 @@
 
 #include <neural/util/Gradient.hpp>
 #include <neural/Tensor.hpp>
+#include <neural/optimizers/OptimizerFactory.hpp>
 
 namespace neural {
     template <typename Dtype, int InputSize, int BatchSize>
@@ -24,7 +25,8 @@ namespace neural {
             return input.tanh().eval();
         }
 
-        void attachOptimizer(const OptimizerFactory &factory) {
+        template<class Q = Dtype>
+        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type attachOptimizer(const OptimizerFactory &factory) {
             // No weights to optimize
         }
 
