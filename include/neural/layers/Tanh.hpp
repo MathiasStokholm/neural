@@ -24,6 +24,10 @@ namespace neural {
             return input.tanh().eval();
         }
 
+        void attachOptimizer(const OptimizerFactory &factory) {
+            // No weights to optimize
+        }
+
         template<class Q = Dtype>
         typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights() {
             // No weights to adjust here

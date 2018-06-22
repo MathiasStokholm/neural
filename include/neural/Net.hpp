@@ -20,55 +20,60 @@
 
 namespace neural {
     namespace detail {
-        //// Templates related to forward calls
         template<size_t N>
-        struct Call {
+        struct Recursor {
             template<typename Input, typename Layers>
-            static inline auto call(Input && input, Layers && layers)
-            -> decltype(std::get<N-1>(std::forward<Layers>(layers)).forward(Call<N-1>::call(std::forward<Input>(input), std::forward<Layers>(layers)))) {
-                return std::get<N-1>(std::forward<Layers>(layers)).forward(Call<N-1>::call(std::forward<Input>(input), std::forward<Layers>(layers)));
+            static inline auto update(Input && input, Layers && layers)
+            -> decltype(std::get<N-1>(std::forward<Layers>(layers)).forward(Recursor<N-1>::update(std::forward<Input>(input), std::forward<Layers>(layers)))) {
+                return std::get<N-1>(std::forward<Layers>(layers)).forward(Recursor<N-1>::update(std::forward<Input>(input), std::forward<Layers>(layers)));
             }
-        };
 
-        template<>
-        struct Call<0> {
-            template<typename Input, typename Layers>
-            static inline auto call(Input && input, Layers && layers) -> decltype(input) {
-                return input;
-            }
-        };
-
-        template<typename Input, typename Layers>
-        inline auto call(Input && input, Layers && layers)
-        -> decltype(Call<std::tuple_size<typename std::decay<Layers>::type>::value>::call(std::forward<Input>(input), std::forward<Layers>(layers))) {
-            return Call<std::tuple_size<typename std::decay<Layers>::type>::value>::call(std::forward<Input>(input), std::forward<Layers>(layers));
-        }
-        ////
-
-        //// Templates related to backward calls
-        template<size_t N>
-        struct Backward {
             template<typename Layers>
             static inline void backward(Layers && layers) {
                 std::get<N-1>(std::forward<Layers>(layers)).updateWeights();
-                Backward<N-1>::backward(std::forward<Layers>(layers));
+                Recursor<N-1>::backward(std::forward<Layers>(layers));
+            }
+
+            template<typename Layers>
+            static inline void attach(OptimizerFactory && factory, Layers && layers) {
+                std::get<N-1>(std::forward<Layers>(layers)).attachOptimizer(std::forward<OptimizerFactory>(factory));
+                Recursor<N-1>::attach(std::forward<OptimizerFactory>(factory), std::forward<Layers>(layers));
             }
         };
 
         template<>
-        struct Backward<0> {
+        struct Recursor<0> {
+            template<typename Input, typename Layers>
+            static inline Input update(Input && input, Layers && layers) {
+                return input;
+            }
+
             template<typename Layers>
             static inline void backward(Layers && layers) {
                 // Noop
             }
+
+            template<typename Layers>
+            static inline void attach(OptimizerFactory && factory, Layers && layers) {
+                // Noop
+            }
         };
 
-        template<typename Layers>
-        inline auto backward(Layers && layers)
-        -> decltype(Backward<std::tuple_size<typename std::decay<Layers>::type>::value>::backward(std::forward<Layers>(layers))) {
-            return Backward<std::tuple_size<typename std::decay<Layers>::type>::value>::backward(std::forward<Layers>(layers));
+        template<typename Input, typename Layers>
+        inline auto update(Input && input, Layers && layers)
+        -> decltype(Recursor<std::tuple_size<typename std::decay<Layers>::type>::value>::update(std::forward<Input>(input), std::forward<Layers>(layers))) {
+            return Recursor<std::tuple_size<typename std::decay<Layers>::type>::value>::update(std::forward<Input>(input), std::forward<Layers>(layers));
         }
-        ////
+
+        template<typename Layers>
+        inline void backward(Layers && layers) {
+            Recursor<std::tuple_size<typename std::decay<Layers>::type>::value>::backward(std::forward<Layers>(layers));
+        }
+
+        template<typename Layers>
+        inline void attach(OptimizerFactory && factory, Layers && layers) {
+            Recursor<std::tuple_size<typename std::decay<Layers>::type>::value>::attach(std::forward<OptimizerFactory>(factory), std::forward<Layers>(layers));
+        }
     }
 
     template<typename... Layers>
@@ -81,11 +86,21 @@ namespace neural {
         explicit Net(Layers&&... layers): m_layers(std::make_tuple(std::forward<Layers>(layers)...)) {}
 
         OutputTensor forward(const InputTensor &input) {
-            return detail::call(input, m_layers);
+            return detail::update(input, m_layers);
+        }
+
+        template<class Q = Dtype>
+        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type attachOptimizer(OptimizerFactory && factory) {
+            detail::attach(std::forward<OptimizerFactory>(factory), m_layers);
+            m_optimizerAttached = true;
         }
 
         template<class Q = Dtype>
         typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type backward(Q &loss, bool zeroGradients=true) {
+            if (!m_optimizerAttached) {
+                throw std::runtime_error("No optimizer attached - cannot perform backwards pass");
+            }
+
             loss.grad();
 
             // Perform weight updates
@@ -99,6 +114,7 @@ namespace neural {
 
     private:
         std::tuple<Layers...> m_layers;
+        bool m_optimizerAttached = false;
     };
 
     template<typename... Layers>

@@ -14,9 +14,10 @@
 #include <neural/util/Mapping.hpp>
 #include <neural/Tensor.hpp>
 #include <neural/initializers/NormalInitializer.hpp>
+#include <neural/optimizers/OptimizerFactory.hpp>
 
 namespace neural {
-    template <typename Dtype, unsigned int InputSize, unsigned int NumNeurons, unsigned int BatchSize, bool UseBias>
+    template <typename Dtype, unsigned int InputSize, unsigned int NumNeurons, unsigned int BatchSize, bool UseBias=true>
     class Linear {
     public:
         using InputTensor = Tensor<Dtype, BatchSize, InputSize>;
@@ -33,6 +34,14 @@ namespace neural {
             if (HasBias) {
                 m_biases.template setRandom<NormalInitializer<Dtype>>();
             }
+        }
+
+        void attachOptimizer(const OptimizerFactory &factory) {
+            m_weightsOptimizer = factory.createOptimizer(m_weights);
+            if (HasBias) {
+                m_biasOptimizer = factory.createOptimizer(m_biases);
+            }
+            m_optimizerAttached = true;
         }
 
         OutputTensor forward(const InputTensor &input) const {
@@ -67,25 +76,24 @@ namespace neural {
 
         template<class Q = Dtype>
         typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights() {
-            // Backprop is available, adjust weights and biases
-            const double learningRate = 0.1;
+            if (!m_optimizerAttached) {
+                throw std::runtime_error("No optimizer attached - cannot update weights");
+            }
 
-            // Update weights
-            const auto weightGrad = m_weights.unaryExpr(std::cref(getGradient));
-            m_weights -= learningRate * weightGrad;
+            // Backprop is available, adjust weights and biases
+            m_weights -= m_weightsOptimizer->update(m_weights);
 
             if (HasBias) {
-                const double biasLearningRate = 0.1;
-
-                // Update biases
-                const auto biasGrad = m_biases.unaryExpr(std::cref(getGradient));
-                m_biases -= biasLearningRate * biasGrad;
+                m_biases -= m_biasOptimizer->update(m_biases);
             }
         }
 
     private:
-        WeightsTensor m_weights;
+        Tensor<Dtype, InputSize, NumNeurons> m_weights;
+        std::unique_ptr<Optimizer<WeightsTensor>> m_weightsOptimizer;
         BiasesTensor m_biases;
+        std::unique_ptr<Optimizer<BiasesTensor>> m_biasOptimizer;
+        bool m_optimizerAttached = false;
     };
 }
 

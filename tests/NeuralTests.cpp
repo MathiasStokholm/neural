@@ -10,6 +10,7 @@
 #include <neural/Net.hpp>
 #include <neural/util/RNG.hpp>
 #include <neural/losses/MeanSquaredError.hpp>
+#include <neural/optimizers/OptimizerFactory.hpp>
 
 #include <Eigen/Eigen>
 
@@ -74,6 +75,8 @@ TEST_CASE("Testing net backward", "[net_backward]" ) {
             neural::Relu<neural::Derivative, inputSize, batchSize>(),
             neural::Relu<neural::Derivative, inputSize, batchSize>()
     );
+    net.attachOptimizer(neural::OptimizerFactory(0.1));
+
     const auto result = net.forward(x);
 
     // Evaluate gradient (loss is just sum)
@@ -120,9 +123,14 @@ TEST_CASE("Testing backprop", "[backprop]" ) {
     neural::Tensor<neural::Derivative, batchSize, inputSize> input;
     input.setValues({{30, -3, -2, -1, 0, 1, 3,  5,  7, 10}, {30, -3, -2, -1, 0, 1, 3,  5,  7, 10}});
 
-    neural::Linear<neural::Derivative, inputSize, numNeurons, batchSize, true> linear;
+    neural::Linear<neural::Derivative, inputSize, numNeurons, batchSize> linear;
     neural::Relu<neural::Derivative, numNeurons2, batchSize> relu;
-    neural::Linear<neural::Derivative, numNeurons, numNeurons2, batchSize, true> linear2;
+    neural::Linear<neural::Derivative, numNeurons, numNeurons2, batchSize> linear2;
+
+    // Attach optimizers
+    neural::OptimizerFactory optimizerFactory(0.1);
+    linear.attachOptimizer(optimizerFactory);
+    linear2.attachOptimizer(optimizerFactory);
 
     // Perform operations
     Eigen::Tensor<neural::Derivative, 0> y;
@@ -164,6 +172,7 @@ TEST_CASE("Testing XOR", "[xor]" ) {
             neural::Linear<neural::Derivative, 8, 1, batchSize, false>(),
             neural::Tanh<neural::Derivative, OutputTensor::ChannelSize, batchSize>()
     );
+    net.attachOptimizer(neural::OptimizerFactory(0.1, 0.0));
 
     // Create loss function
     neural::MeanSquaredError<neural::Derivative, OutputTensor::ChannelSize, batchSize> error;

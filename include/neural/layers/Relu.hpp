@@ -12,6 +12,7 @@
 
 #include <neural/util/Gradient.hpp>
 #include <neural/Tensor.hpp>
+#include <neural/optimizers/OptimizerFactory.hpp>
 
 namespace neural {
     template <typename Dtype, int InputSize, int BatchSize>
@@ -22,6 +23,10 @@ namespace neural {
 
         OutputTensor forward(const InputTensor &input) const {
             return input.cwiseMax(Dtype(0));
+        }
+
+        void attachOptimizer(const OptimizerFactory &factory) {
+            // No weights to optimize
         }
 
         template<class Q = Dtype>
