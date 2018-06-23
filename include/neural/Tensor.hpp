@@ -27,12 +27,6 @@ namespace neural {
 
         template <typename Derived>
         Tensor(const Eigen::TensorBase<Derived>& tensor): EigenType::TensorFixedSize(tensor) {}
-
-        template <typename Derived>
-        Tensor(Eigen::TensorBase<Derived>& tensor): EigenType::TensorFixedSize(tensor) {}
-
-        template <typename Derived>
-        Tensor(Eigen::TensorBase<Derived>&& tensor): EigenType::TensorFixedSize(tensor) {}
     };
 }
 
