@@ -6,6 +6,7 @@
 #include <neural/layers/Tanh.hpp>
 #include <neural/layers/Linear.hpp>
 #include <neural/layers/Sigmoid.hpp>
+#include <neural/layers/Softmax.hpp>
 #include <neural/util/Gradient.hpp>
 #include <neural/util/Mapping.hpp>
 #include <neural/Net.hpp>
@@ -42,31 +43,41 @@ TEST_CASE("Testing tensor -> matrix/vector mapping functions", "[mapping]" ) {
 }
 
 TEST_CASE("Testing activation functions", "[activations]" ) {
-    neural::Tensor<double, 1, 5> x, expectedValues;
+    constexpr int numInputs = 7;
+    neural::Tensor<double, 1, numInputs> x, expectedValues;
     x.setValues({{-10, -5, -1, 0, 1, 5, 10}});
 
     // Test ReLu
     expectedValues.setValues({{0, 0, 0, 0, 1, 5, 10}});
-    neural::Relu<double, 5, 1> relu;
+    neural::Relu<double, numInputs, 1> relu;
     auto result = relu.forward(x);
-    for (unsigned int i = 0; i < 5; i++) {
+    for (unsigned int i = 0; i < numInputs; i++) {
         REQUIRE( expectedValues(i) == result(i) );
     }
 
     // Test Sigmoid
     expectedValues.setValues({{4.53978687e-05, 6.69285092e-03, 2.68941421e-01, 5.00000000e-01, 7.31058579e-01,
                                9.93307149e-01, 9.99954602e-01}});
-    neural::Sigmoid<double, 5, 1> sigmoid;
+    neural::Sigmoid<double, numInputs, 1> sigmoid;
     result = sigmoid.forward(x);
-    for (unsigned int i = 0; i < 5; i++) {
+    for (unsigned int i = 0; i < numInputs; i++) {
         REQUIRE( expectedValues(i) == Approx(result(i)) );
     }
 
     // Test Tanh
     expectedValues.setValues({{-1, -0.9999092, -0.76159416, 0, 0.76159416, 0.9999092, 1}});
-    neural::Tanh<double, 5, 1> tanh;
+    neural::Tanh<double, numInputs, 1> tanh;
     result = tanh.forward(x);
-    for (unsigned int i = 0; i < 5; i++) {
+    for (unsigned int i = 0; i < numInputs; i++) {
+        REQUIRE( expectedValues(i) == Approx(result(i)) );
+    }
+
+    // Test Softmax
+    expectedValues.setValues({{2.04698081e-09, 3.03798888e-07, 1.65868573e-05, 4.50877527e-05, 1.22561219e-04,
+                               6.69161581e-03, 9.93123843e-01}});
+    neural::Softmax<double, numInputs, 1> softmax;
+    result = softmax.forward(x);
+    for (unsigned int i = 0; i < numInputs; i++) {
         REQUIRE( expectedValues(i) == Approx(result(i)) );
     }
 }
