@@ -12,6 +12,7 @@
 #include <neural/Net.hpp>
 #include <neural/util/RNG.hpp>
 #include <neural/losses/MeanSquaredError.hpp>
+#include <neural/losses/CrossEntropy.hpp>
 #include <neural/optimizers/OptimizerFactory.hpp>
 
 #include <Eigen/Eigen>
@@ -80,6 +81,19 @@ TEST_CASE("Testing activation functions", "[activations]" ) {
     for (unsigned int i = 0; i < numInputs; i++) {
         REQUIRE( expectedValues(i) == Approx(result(i)) );
     }
+}
+
+TEST_CASE("Testing loss functions", "[losses]" ) {
+    constexpr int numInputs = 4;
+    neural::Tensor<double, 1, numInputs> predictions, labels;
+
+    // Test Cross Entropy
+    predictions.setValues({{0.25, 0.0, 0.25, 0.5}});
+    labels.setValues({{0, 0, 1, 0}});
+    double expectedValue = 1.3862943571198905;
+    neural::CrossEntropy<double, numInputs, 1> crossEntropy;
+    auto result = crossEntropy.compute(predictions, labels);
+    REQUIRE( expectedValue == result );
 }
 
 TEST_CASE("Testing net forward", "[net_forward]" ) {
