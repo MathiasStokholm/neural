@@ -17,7 +17,7 @@ namespace neural {
     template <typename Dtype>
     class NormalInitializer {
     public:
-        NormalInitializer() = default;
+        NormalInitializer(): m_distribution(0, 1e-3) {}
         NormalInitializer(const NormalInitializer&) = default;
 
         Dtype operator()(Eigen::DenseIndex element_location,

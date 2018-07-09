@@ -17,6 +17,7 @@
 #include <type_traits>
 #include <utility>
 #include <neural/util/Gradient.hpp>
+#include <neural/optimizers/OptimizerFactory.hpp>
 
 namespace neural {
     namespace detail {
@@ -96,7 +97,7 @@ namespace neural {
         }
 
         template<class Q = Dtype>
-        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type backward(Q &loss, bool zeroGradients=true) {
+        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type backward(Q &loss) {
             if (!m_optimizerAttached) {
                 throw std::runtime_error("No optimizer attached - cannot perform backwards pass");
             }
@@ -105,11 +106,6 @@ namespace neural {
 
             // Perform weight updates
             detail::backward(m_layers);
-
-            // Zero all gradients
-            if (zeroGradients) {
-                setGradientsZero();
-            }
         }
 
     private:

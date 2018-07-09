@@ -94,6 +94,8 @@ TEST_CASE("Testing loss functions", "[losses]" ) {
     neural::CrossEntropy<double, numInputs, 1> crossEntropy;
     auto result = crossEntropy.compute(predictions, labels);
     REQUIRE( expectedValue == result );
+    auto accuracy = crossEntropy.accuracy(predictions, labels);
+    REQUIRE( accuracy == 0 );
 }
 
 TEST_CASE("Testing net forward", "[net_forward]" ) {
@@ -119,6 +121,7 @@ TEST_CASE("Testing net forward", "[net_forward]" ) {
 
 #ifdef AUTO_DIFF_ENABLED
 TEST_CASE("Testing net backward", "[net_backward]" ) {
+    neural::GradientGuard guard;
     constexpr int inputSize = 10;
     constexpr int batchSize = 1;
 
@@ -137,7 +140,7 @@ TEST_CASE("Testing net backward", "[net_backward]" ) {
 
     // Evaluate gradient (loss is just sum)
     Eigen::Tensor<neural::Derivative, 0> loss = result.sum();
-    net.backward(loss(0), false);
+    net.backward(loss(0));
 
     for (unsigned int i = 0; i < inputSize; i++) {
         const auto grad = x(i).adj();
@@ -146,6 +149,7 @@ TEST_CASE("Testing net backward", "[net_backward]" ) {
 }
 
 TEST_CASE("Testing ReLu", "[relu]" ) {
+    neural::GradientGuard guard;
     constexpr int inputSize = 10;
     constexpr int batchSize = 1;
 
@@ -191,6 +195,7 @@ TEST_CASE("Testing backprop", "[backprop]" ) {
     // Perform operations
     Eigen::Tensor<neural::Derivative, 0> y;
     for (int i=0; i<10; i++) {
+        neural::GradientGuard guard;
         const auto result1 = linear.forward(input);
         const auto result2 = linear2.forward(result1);
         const auto output = relu.forward(result2);
@@ -201,7 +206,6 @@ TEST_CASE("Testing backprop", "[backprop]" ) {
 
         linear.updateWeights();
         linear2.updateWeights();
-        stan::math::set_zero_all_adjoints();
     }
 }
 
@@ -234,7 +238,9 @@ TEST_CASE("Testing XOR", "[xor]" ) {
     neural::MeanSquaredError<neural::Derivative, OutputTensor::ChannelSize, batchSize> error;
 
     // Train
-    for (int i = 0; i < 500; i++) {
+    for (int i = 0; i < 1000; i++) {
+        neural::GradientGuard guard;
+
         // Get input/output tensors
         int index = rng.getNext();
         Eigen::array<int, 2> offsets = {index, 0};
@@ -260,6 +266,7 @@ TEST_CASE("Testing XOR", "[xor]" ) {
 
     // Test network
     for (int i = 0; i < 4; i++) {
+        neural::GradientGuard guard;
         Eigen::array<int, 2> offsets = {i, 0};
         Eigen::array<int, 2> extents = {1, inputSize};
         InputTensor x = xs.slice(offsets, extents).eval();

@@ -21,9 +21,16 @@ namespace neural {
         return derivative.adj();
     }
 
-    void setGradientsZero() {
-        stan::math::set_zero_all_adjoints();
-    }
+    struct GradientGuard {
+        GradientGuard() {
+            stan::math::start_nested();
+        }
+
+        ~GradientGuard() {
+            stan::math::set_zero_all_adjoints_nested();
+            stan::math::recover_memory_nested();
+        }
+    };
 }
 
 #else
@@ -33,7 +40,6 @@ namespace neural {
 namespace neural {
     using Derivative = void;
     void getGradient();
-    void setGradientsZero();
 }
 
 #endif //AUTO_DIFF_ENABLED
