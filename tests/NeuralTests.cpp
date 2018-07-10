@@ -1,21 +1,6 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
-#include <Eigen/Core>
-#include <neural/Tensor.hpp>
-#include <neural/layers/Relu.hpp>
-#include <neural/layers/Tanh.hpp>
-#include <neural/layers/Linear.hpp>
-#include <neural/layers/Sigmoid.hpp>
-#include <neural/layers/Softmax.hpp>
-#include <neural/util/Gradient.hpp>
-#include <neural/util/Mapping.hpp>
-#include <neural/Net.hpp>
-#include <neural/util/RNG.hpp>
-#include <neural/losses/MeanSquaredError.hpp>
-#include <neural/losses/CrossEntropy.hpp>
-#include <neural/optimizers/OptimizerFactory.hpp>
-
-#include <Eigen/Eigen>
+#include <neural/Neural.hpp>
 
 TEST_CASE("Testing tensor -> matrix/vector mapping functions", "[mapping]" ) {
     constexpr int inputSize = 3;

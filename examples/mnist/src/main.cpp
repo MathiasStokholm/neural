@@ -10,11 +10,6 @@
 #include <iostream>
 #include <mnist/mnist_reader.hpp>
 #include <neural/Neural.hpp>
-#include <neural/layers/Linear.hpp>
-#include <neural/layers/Tanh.hpp>
-#include <neural/layers/Softmax.hpp>
-#include <neural/losses/CrossEntropy.hpp>
-#include <neural/util/RNG.hpp>
 
 constexpr unsigned int batchSize = 100;
 constexpr unsigned int inputSize = 28*28;
