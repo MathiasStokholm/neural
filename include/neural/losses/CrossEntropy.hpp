@@ -22,6 +22,11 @@ namespace neural {
             Eigen::Tensor<Dtype, 0> crossEntropy = -(labels * (predictions + Dtype(1e-9)).log()).sum();
             return crossEntropy(0) / Dtype(BatchSize);
         }
+
+        Dtype accuracy(const InputTensor &predictions, const InputTensor &labels) const {
+            const Eigen::Tensor<bool, 1> matches = (predictions.argmax(1) == labels.argmax(1));
+            return ConstTensorToMatrix<BatchSize, 1>(matches).count() / Dtype(BatchSize);
+        }
     };
 }
 
