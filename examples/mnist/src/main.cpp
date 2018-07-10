@@ -16,33 +16,47 @@
 #include <neural/losses/CrossEntropy.hpp>
 #include <neural/util/RNG.hpp>
 
-constexpr int batchSize = 100;
-constexpr int inputSize = 28*28;
-constexpr int outputSize = 10;
-constexpr int epochs = 15;
+constexpr unsigned int batchSize = 100;
+constexpr unsigned int inputSize = 28*28;
+constexpr unsigned int outputSize = 10;
+constexpr unsigned int epochs = 15;
+
+// Data types used for training
+using InputTensor = neural::Tensor<neural::Derivative, batchSize, inputSize>;
+using OutputTensor = neural::Tensor<neural::Derivative, batchSize, outputSize>;
 
 int main(int argc, char* argv[]) {
     // MNIST_DATA_LOCATION set by MNIST cmake config
     std::cout << "MNIST data directory: " << MNIST_DATA_LOCATION << std::endl;
 
-    // Load MNIST data
-    auto dataset = mnist::read_dataset<std::vector, std::vector, std::uint8_t, std::uint8_t>(MNIST_DATA_LOCATION);
+    // Load MNIST data and define easy getter function
+    const auto dataset = mnist::read_dataset<std::vector, std::vector, std::uint8_t, std::uint8_t>(MNIST_DATA_LOCATION);
+    auto loadData = [&dataset] (bool training, unsigned int startIndex) {
+        InputTensor x;
+        OutputTensor y;
+        for (unsigned int j = 0; j < batchSize; j++) {
+            // Map image at index into input tensor and convert to neural::Derivative
+            const auto index = startIndex + j;
+            const auto &images = training? dataset.training_images: dataset.test_images;
+            auto xMapped = neural::TensorSliceToVector<inputSize, batchSize>(x, j);
+            const auto inputMapped = Eigen::Map<const Eigen::Matrix<std::uint8_t, inputSize, 1>>(images[index].data());
+            xMapped = inputMapped.cast<neural::Derivative>();
 
-    std::cout << "Nbr of training images = " << dataset.training_images.size() << std::endl;
-    std::cout << "Nbr of training labels = " << dataset.training_labels.size() << std::endl;
-    std::cout << "Nbr of test images = " << dataset.test_images.size() << std::endl;
-    std::cout << "Nbr of test labels = " << dataset.test_labels.size() << std::endl;
+            // Map label at index into output tensor using one-hot encoding
+            const auto &labels = training? dataset.training_labels: dataset.test_labels;
+            auto yMapped = neural::TensorSliceToVector<outputSize, batchSize>(y, j);
+            yMapped = Eigen::Matrix<neural::Derivative, outputSize, 1>::Zero();
+            yMapped[labels.at(index)] = 1;
+        }
+        return std::make_tuple(std::move(x), std::move(y));
+    };
 
     // Create RNG engine and shuffling indexes
     auto rng = std::default_random_engine {};
     std::vector<unsigned int> indexes(dataset.training_images.size());
     std::iota(indexes.begin(), indexes.end(), 0U);
 
-    // Data types used for training
-    using InputTensor = neural::Tensor<neural::Derivative, batchSize, inputSize>;
-    using OutputTensor = neural::Tensor<neural::Derivative, batchSize, outputSize>;
-
-    // Create network
+    // Create network and attach optimizer
     auto net = neural::make_net(
             neural::Linear<neural::Derivative, InputTensor::ChannelSize, OutputTensor::ChannelSize, batchSize>(),
             neural::Softmax<neural::Derivative, OutputTensor::ChannelSize, batchSize>()
@@ -66,17 +80,7 @@ int main(int argc, char* argv[]) {
             // Get input/output tensors
             InputTensor x;
             OutputTensor y;
-            for (unsigned int j = 0; j < batchSize; j++) {
-                const auto index = i * batchSize + j;
-                auto xMapped = neural::TensorSliceToVector<inputSize, batchSize>(x, j);
-                const auto inputMapped = Eigen::Map<Eigen::Matrix<std::uint8_t, inputSize, 1>>(dataset.test_images.at(index).data());
-                xMapped = inputMapped.cast<neural::Derivative>();
-
-                auto yMapped = neural::TensorSliceToVector<outputSize, batchSize>(y, j);
-                const auto &output = dataset.test_labels.at(index);
-                yMapped = Eigen::Matrix<neural::Derivative, outputSize, 1>::Zero();
-                yMapped[output] = 1;
-            }
+            std::tie(x, y) = loadData(false, i * batchSize);
 
             // Perform forward
             const auto prediction = net.forward(x);
@@ -98,17 +102,7 @@ int main(int argc, char* argv[]) {
             // Get input/output tensors
             InputTensor x;
             OutputTensor y;
-            for (unsigned int j = 0; j < batchSize; j++) {
-                const auto index = indexes[i * batchSize + j];
-                auto xMapped = neural::TensorSliceToVector<inputSize, batchSize>(x, j);
-                const auto inputMapped = Eigen::Map<Eigen::Matrix<std::uint8_t, inputSize, 1>>(dataset.training_images[index].data());
-                xMapped = inputMapped.cast<neural::Derivative>();
-
-                auto yMapped = neural::TensorSliceToVector<outputSize, batchSize>(y, j);
-                const auto output = dataset.training_labels[index];
-                yMapped = Eigen::Matrix<neural::Derivative, outputSize, 1>::Zero();
-                yMapped[output] = 1;
-            }
+            std::tie(x, y) = loadData(true, i * batchSize);
 
             // Perform forward
             const auto prediction = net.forward(x);
