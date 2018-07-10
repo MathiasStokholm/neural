@@ -238,7 +238,7 @@ TEST_CASE("Testing XOR", "[xor]" ) {
     neural::MeanSquaredError<neural::Derivative, OutputTensor::ChannelSize, batchSize> error;
 
     // Train
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 500; i++) {
         neural::GradientGuard guard;
 
         // Get input/output tensors

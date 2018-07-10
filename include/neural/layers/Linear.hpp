@@ -13,7 +13,7 @@
 #include <neural/util/Gradient.hpp>
 #include <neural/util/Mapping.hpp>
 #include <neural/Tensor.hpp>
-#include <neural/initializers/NormalInitializer.hpp>
+#include <neural/initializers/GlorotNormal.hpp>
 #include <neural/optimizers/OptimizerFactory.hpp>
 
 namespace neural {
@@ -29,10 +29,10 @@ namespace neural {
         };
 
         Linear() {
-            m_weights.template setRandom<NormalInitializer<Dtype>>();
+            m_weights.template setRandom<GlorotNormal<Dtype, InputSize, NumNeurons>>();
 
             if (HasBias) {
-                m_biases.template setRandom<NormalInitializer<Dtype>>();
+                m_biases.setConstant(0);
             }
         }
 

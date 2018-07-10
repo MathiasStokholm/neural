@@ -25,12 +25,38 @@ constexpr unsigned int epochs = 15;
 using InputTensor = neural::Tensor<neural::Derivative, batchSize, inputSize>;
 using OutputTensor = neural::Tensor<neural::Derivative, batchSize, outputSize>;
 
+/**
+ * @brief Normalize the values in a dataset to be in the [0, 1] range
+ * @param data [in/out]: The dataset to normalize
+ */
+void normalize(std::vector<std::vector<double>> &data) {
+    // Find max pixel value over all images (likely 255)
+    double maxValue = 0;
+    for (const auto &image: data) {
+        const auto maxImagePixel = *std::max_element(image.begin(), image.end());
+        if (maxImagePixel > maxValue) {
+            maxValue = maxImagePixel;
+        }
+    }
+
+    // Normalize all pixels to [0-1] range
+    for (auto &image: data) {
+        for (auto &pixel: image) {
+            pixel = pixel / maxValue;
+        }
+    }
+}
+
 int main(int argc, char* argv[]) {
     // MNIST_DATA_LOCATION set by MNIST cmake config
     std::cout << "MNIST data directory: " << MNIST_DATA_LOCATION << std::endl;
 
-    // Load MNIST data and define easy getter function
-    const auto dataset = mnist::read_dataset<std::vector, std::vector, std::uint8_t, std::uint8_t>(MNIST_DATA_LOCATION);
+    // Load MNIST data and normalize data
+    auto dataset = mnist::read_dataset<std::vector, std::vector, double, std::uint8_t>(MNIST_DATA_LOCATION);
+    normalize(dataset.training_images);
+    normalize(dataset.test_images);
+
+    // Create easy getter function for data
     auto loadData = [&dataset] (bool training, unsigned int startIndex) {
         InputTensor x;
         OutputTensor y;
@@ -39,7 +65,7 @@ int main(int argc, char* argv[]) {
             const auto index = startIndex + j;
             const auto &images = training? dataset.training_images: dataset.test_images;
             auto xMapped = neural::TensorSliceToVector<inputSize, batchSize>(x, j);
-            const auto inputMapped = Eigen::Map<const Eigen::Matrix<std::uint8_t, inputSize, 1>>(images[index].data());
+            const auto inputMapped = Eigen::Map<const Eigen::Matrix<double, inputSize, 1>>(images[index].data());
             xMapped = inputMapped.cast<neural::Derivative>();
 
             // Map label at index into output tensor using one-hot encoding
@@ -61,7 +87,7 @@ int main(int argc, char* argv[]) {
             neural::Linear<neural::Derivative, InputTensor::ChannelSize, OutputTensor::ChannelSize, batchSize>(),
             neural::Softmax<neural::Derivative, OutputTensor::ChannelSize, batchSize>()
     );
-    net.attachOptimizer(neural::OptimizerFactory::Adam(1e-6));
+    net.attachOptimizer(neural::OptimizerFactory::Adam(0.1));
 
     // Create loss function
     neural::CrossEntropy<neural::Derivative, OutputTensor::ChannelSize, batchSize> error;
