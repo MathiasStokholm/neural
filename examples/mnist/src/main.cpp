@@ -1,7 +1,8 @@
 /**
 * \file main.cpp
 *
-* \brief //TODO
+* \brief Example showing training of a simple neural network on the MNIST dataset (http://yann.lecun.com/exdb/mnist).
+*        This training example reaches ~92% accuracy after just a few epochs of training.
 *
 * \date   Jun 28, 2018
 * \author Mathias Bøgh Stokholm
@@ -37,7 +38,7 @@ void normalize(std::vector<std::vector<double>> &data) {
     // Normalize all pixels to [0-1] range
     for (auto &image: data) {
         for (auto &pixel: image) {
-            pixel = pixel / maxValue;
+            pixel /= maxValue;
         }
     }
 }
@@ -87,7 +88,8 @@ int main(int argc, char* argv[]) {
     // Create loss function
     neural::CrossEntropy<neural::Derivative, OutputTensor::ChannelSize, batchSize> error;
 
-    // Train
+
+    //// Training section below
     const auto trainSteps = dataset.training_images.size() / batchSize;
     const auto testSteps = dataset.test_images.size() / batchSize;
     for (unsigned int epoch = 0; epoch < epochs; epoch++) {
