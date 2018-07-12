@@ -34,7 +34,7 @@ for (unsigned int currentEpoch = 0; currentEpoch < numEpoch; currentEpoch++) {
  * Build:
    * CMake v3.0.0+
  * Training:
-   * Stan Math Library v2.17.1](https://github.com/stan-dev/math) 
+   * [Stan Math Library v2.17.1](https://github.com/stan-dev/math)
      * cvodes v2.9.0 (included in Stan Math release)
      * Eigen v3.3.3 (included in Stan Math release)
      * Boost v1.64 (included in Stan Math release)
