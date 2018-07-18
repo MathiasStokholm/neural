@@ -8,7 +8,7 @@ Neural makes heavy use of template metaprogramming to achieve the following:
  * Training-related functionality only gets included when necessary (i.e. not for inference)
  
 ### Example Usage
-```
+```c++
 auto net = neural::make_net(
         neural::Linear<neural::Derivative, inputSize, numNeurons, batchSize, false>(),
         neural::Tanh<neural::Derivative, numNeurons, batchSize>(),
@@ -48,21 +48,21 @@ and make sure all the Neural dependencies appear on your include path. Because N
 header-only, there's nothing to build. 
 
 If you use CMake, you can use Neural by adding the following to your `CMakeLists.txt`:
-```
+```cmake
 set(STAN_MATH_PATH "/path/to/stan/math" CACHE STRING "Path to the Stan Math repository")
 add_subdirectory(/path/to/neural)
 target_link_libraries(${YOUR_PROJECT_NAME} PRIVATE neural)
 ```
 
 To run the Neural tests, invoke CMake with the appropriate option set:
-```
+```bash
 mkdir build && cd build
 cmake -D NEURAL_BUILD_TESTS=ON ..
 make
 ```
 
 The tests can now be run via the binary:
-```
+```bash
 cd build
 ./bin/neural_tests
 ```  
@@ -72,14 +72,14 @@ Neural contains the following examples:
  * mnist - Training a simple network to classify images of handwritten digits
  
 To build the examples, invoke CMake with the appropriate option set:
-```
+```bash
 mkdir build && cd build
 cmake -D NEURAL_BUILD_EXAMPLES=ON ..
 make
 ```
 
 The examples can now be run via the binary:
-```
+```bash
 cd build
 ./bin/neural_mnist
 ```
