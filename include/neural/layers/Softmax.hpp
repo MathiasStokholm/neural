@@ -1,7 +1,7 @@
 /**
 * \file Softmax.hpp
 *
-* \brief //TODO
+* \brief Softmax activation function
 *
 * \date   Jun 23, 2018
 * \author Mathias Bøgh Stokholm
@@ -15,6 +15,12 @@
 #include <neural/optimizers/OptimizerFactory.hpp>
 
 namespace neural {
+    /**
+     * @brief Softmax activation function
+     * @tparam Dtype The scalar type to use for this layer
+     * @tparam InputSize The number of inputs to this layer
+     * @tparam BatchSize The batch size to use
+     */
     template <typename Dtype, int InputSize, int BatchSize>
     class Softmax {
     public:

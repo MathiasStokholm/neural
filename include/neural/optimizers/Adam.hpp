@@ -1,7 +1,7 @@
 /**
 * \file Adam.hpp
 *
-* \brief //TODO
+* \brief Optimizer implementing the Adam algorithm as described in https://arxiv.org/abs/1412.6980
 *
 * \date   Jun 22, 2018
 * \author Mathias Bøgh Stokholm
@@ -14,6 +14,10 @@
 #include <neural/util/Gradient.hpp>
 
 namespace neural {
+    /**
+     * @brief Optimizer implementing the Adam algorithm as described in https://arxiv.org/abs/1412.6980
+     * @tparam Tensor The type of tensor to optimize
+     */
     template <typename Tensor>
     class AdamOptimizer: public Optimizer<Tensor> {
     public:

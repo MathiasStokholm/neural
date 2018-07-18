@@ -1,7 +1,7 @@
 /**
 * \file SGD.hpp
 *
-* \brief //TODO
+* \brief Optimizer implementing regular gradient descent
 *
 * \date   Jun 22, 2018
 * \author Mathias Bøgh Stokholm
@@ -14,6 +14,10 @@
 #include <neural/util/Gradient.hpp>
 
 namespace neural {
+    /**
+     * @brief Optimizer implementing regular gradient descent with momentum
+     * @tparam Tensor The type of tensor to optimize
+     */
     template <typename Tensor>
     class SGDOptimizer: public Optimizer<Tensor> {
     public:

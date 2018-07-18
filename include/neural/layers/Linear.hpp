@@ -1,7 +1,8 @@
 /**
 * \file Linear.hpp
 *
-* \brief //TODO
+* \brief Layer for applying a linear operation, e.g. y = Ax + b, where x is the input, A is a set of learned
+*        weights, and b is a set of learned biases
 *
 * \date   Jun 13, 2018
 * \author Mathias Bøgh Stokholm
@@ -17,6 +18,15 @@
 #include <neural/optimizers/OptimizerFactory.hpp>
 
 namespace neural {
+    /**
+     * @brief Layer for applying a linear operation, e.g. y = Ax + b, where x is the input, A is a set of learned
+     *        weights, and b is a set of learned biases
+     * @tparam Dtype The scalar type to use for this layer
+     * @tparam InputSize The number of inputs to this layer
+     * @tparam NumNeurons The number of neurons (outputs)
+     * @tparam BatchSize The batch size to use
+     * @tparam UseBias Whether to include a bias term in this linear layer
+     */
     template <typename Dtype, unsigned int InputSize, unsigned int NumNeurons, unsigned int BatchSize, bool UseBias=true>
     class Linear {
     public:
@@ -28,7 +38,9 @@ namespace neural {
             HasBias = UseBias
         };
 
-        Linear() {
+        Linear(): m_optimizerAttached(false) {
+            // Initialize weights with a GlorotNormal initialization
+            // TODO: Support other initialization types through a template parameter
             m_weights.template setRandom<GlorotNormal<Dtype, InputSize, NumNeurons>>();
 
             if (HasBias) {
@@ -56,10 +68,10 @@ namespace neural {
 
             // Instead, we apply the operations to each input in batch
             const auto mappedWeights = ConstTensorToMatrix<InputSize, NumNeurons>(m_weights).transpose();
-            for (unsigned int batch = 0; batch < BatchSize; batch++) {
+            for (unsigned int i = 0; i < BatchSize; i++) {
                 // Map tensors to Eigen matrices
-                const auto mappedTensor = ConstTensorSliceToVector<InputSize, BatchSize>(input, batch);
-                auto mappedOutput = TensorSliceToVector<NumNeurons, BatchSize>(result, batch);
+                const auto mappedTensor = ConstTensorSliceToVector<InputSize, BatchSize>(input, i);
+                auto mappedOutput = TensorSliceToVector<NumNeurons, BatchSize>(result, i);
 
                 // Perform y1 = Ax
                 mappedOutput.noalias() = mappedWeights * mappedTensor;
@@ -83,18 +95,17 @@ namespace neural {
 
             // Backprop is available, adjust weights and biases
             m_weights -= m_weightsOptimizer->update(m_weights);
-
             if (HasBias) {
                 m_biases -= m_biasOptimizer->update(m_biases);
             }
         }
 
     private:
-        WeightsTensor m_weights;
-        std::unique_ptr<Optimizer<WeightsTensor>> m_weightsOptimizer;
-        BiasesTensor m_biases;
-        std::unique_ptr<Optimizer<BiasesTensor>> m_biasOptimizer;
-        bool m_optimizerAttached = false;
+        WeightsTensor m_weights;    ///< The weights of this linear layer
+        std::unique_ptr<Optimizer<WeightsTensor>> m_weightsOptimizer;   ///< Pointer to an optimizer used for updating the weights
+        BiasesTensor m_biases;      ///< The biases of this linear layer
+        std::unique_ptr<Optimizer<BiasesTensor>> m_biasOptimizer;       ///< Pointer to an optimizer used for updating the biases
+        bool m_optimizerAttached;   ///< Whether an optimizer has been attached to this layer
     };
 }
 

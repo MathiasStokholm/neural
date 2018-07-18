@@ -1,7 +1,7 @@
 /**
 * \file Tanh.hpp
 *
-* \brief //TODO
+* \brief Hyperbolic tangent activation function
 *
 * \date   Jun 20, 2018
 * \author Mathias Bøgh Stokholm
@@ -15,6 +15,12 @@
 #include <neural/optimizers/OptimizerFactory.hpp>
 
 namespace neural {
+    /**
+     * @brief Hyperbolic tangent activation function
+     * @tparam Dtype The scalar type to use for this layer
+     * @tparam InputSize The number of inputs to this layer
+     * @tparam BatchSize The batch size to use
+     */
     template <typename Dtype, int InputSize, int BatchSize>
     class Tanh {
     public:

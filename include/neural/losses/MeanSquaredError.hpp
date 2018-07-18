@@ -1,7 +1,7 @@
 /**
 * \file MeanSquaredError.hpp
 *
-* \brief //TODO
+* \brief Mean Squared error loss layer
 *
 * \date   Jun 20, 2018
 * \author Mathias Bøgh Stokholm
@@ -13,6 +13,13 @@
 #include <neural/Tensor.hpp>
 
 namespace neural {
+    /**
+     * @brief Mean Squared error loss layer. Calculates the mean squared error between a set of predictions and ground
+     *        truth labels
+     * @tparam Dtype The scalar type to use for this loss layer
+     * @tparam InputSize The number of inputs to this loss layer
+     * @tparam BatchSize The batch size to use
+     */
     template <typename Dtype, unsigned int InputSize, unsigned int BatchSize>
     class MeanSquaredError {
     public:

@@ -1,7 +1,7 @@
 /**
 * \file CrossEntropy.hpp
 *
-* \brief //TODO
+* \brief Cross Entropy loss layer
 *
 * \date   Jun 23, 2018
 * \author Mathias Bøgh Stokholm
@@ -11,8 +11,15 @@
 #define NEURAL_CROSSENTROPY_HPP
 
 #include <neural/Tensor.hpp>
+#include <neural/util/Mapping.hpp>
 
 namespace neural {
+    /**
+     * @brief Cross Entropy loss layer
+     * @tparam Dtype The scalar type to use for this loss layer
+     * @tparam InputSize The number of inputs to this loss layer
+     * @tparam BatchSize The batch size to use
+     */
     template <typename Dtype, unsigned int InputSize, unsigned int BatchSize>
     class CrossEntropy {
     public:

@@ -1,7 +1,7 @@
 /**
 * \file Relu.hpp
 *
-* \brief //TODO
+* \brief Rectified Linear Unit activation function (https://www.cs.toronto.edu/~hinton/absps/reluICML.pdf)
 *
 * \date   Jun 13, 2018
 * \author Mathias Bøgh Stokholm
@@ -15,6 +15,12 @@
 #include <neural/optimizers/OptimizerFactory.hpp>
 
 namespace neural {
+    /**
+     * @brief Rectified Linear Unit activation function (https://www.cs.toronto.edu/~hinton/absps/reluICML.pdf)
+     * @tparam Dtype The scalar type to use for this layer
+     * @tparam InputSize The number of inputs to this layer
+     * @tparam BatchSize The batch size to use
+     */
     template <typename Dtype, int InputSize, int BatchSize>
     class Relu {
     public:
