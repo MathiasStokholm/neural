@@ -32,7 +32,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_BUILD_TYPE=Release -DSTAN_MATH_PATH=$GITHUB_WORKSPACE/stan_math ..
+        cmake -D CMAKE_BUILD_TYPE=Release -D STAN_MATH_PATH=$GITHUB_WORKSPACE/stan_math -D NEURAL_BUILD_TESTS=ON ..
         make -j8
-        ctest
+        ./bin/neural_tests
     
