@@ -1,4 +1,6 @@
 ## Neural - Modern C++11 header-only neural network library
+![Neural CI](https://github.com/MathiasStokholm/neural/workflows/Neural%20CI/badge.svg?branch=master)
+
 The goal of this library is to provide a simple way of embedding neural networks in modern C++ 
 code without the overhead of a full-fledged deep learning library, such as TensorFlow, Caffe, etc.
 
