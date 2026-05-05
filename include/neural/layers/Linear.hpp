@@ -44,7 +44,11 @@ namespace neural {
             m_weights.template setRandom<GlorotNormal<Dtype, InputSize, NumNeurons>>();
 
             if (HasBias) {
-                m_biases.setConstant(0);
+                // Use a per-element loop so that each bias gets its own
+                // independent expression node (and its own gradient storage).
+                for (unsigned int i = 0; i < NumNeurons; i++) {
+                    m_biases(0, i) = Dtype(0);
+                }
             }
         }
 
