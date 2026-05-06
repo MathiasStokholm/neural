@@ -11,7 +11,6 @@
 #define NEURAL_SGD_HPP
 
 #include <neural/optimizers/Optimizer.hpp>
-#include <neural/util/Gradient.hpp>
 
 namespace neural {
     /**
@@ -28,8 +27,7 @@ namespace neural {
             m_lastUpdate.setZero();
         }
 
-        GradTensor update(const Tensor &tensor) override {
-            const auto grad = tensor.unaryExpr(std::cref(getGradient));
+        GradTensor update(const GradTensor &grad) override {
             m_lastUpdate = m_momentum * m_lastUpdate + m_learningRate * grad;
             return m_lastUpdate;
         }

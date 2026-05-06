@@ -33,10 +33,10 @@ namespace neural {
                 return std::get<N-1>(std::forward<Layers>(layers)).forward(Recursor<N-1>::update(std::forward<Input>(input), std::forward<Layers>(layers)));
             }
 
-            template<typename Layers>
-            static inline void backward(Layers && layers) {
-                std::get<N-1>(std::forward<Layers>(layers)).updateWeights();
-                Recursor<N-1>::backward(std::forward<Layers>(layers));
+            template<typename Loss, typename Layers>
+            static inline void backward(const Loss& loss, Layers && layers) {
+                std::get<N-1>(std::forward<Layers>(layers)).updateWeights(loss);
+                Recursor<N-1>::backward(loss, std::forward<Layers>(layers));
             }
 
             template<typename Layers>
@@ -56,8 +56,8 @@ namespace neural {
                 return input;
             }
 
-            template<typename Layers>
-            static inline void backward(Layers && layers) {
+            template<typename Loss, typename Layers>
+            static inline void backward(const Loss& /*loss*/, Layers && /*layers*/) {
                 // Noop
             }
 
@@ -82,13 +82,15 @@ namespace neural {
         }
 
         /**
-         * @brief Call the backward functions of all layers
+         * @brief Call the backward functions of all layers, threading the loss through for gradient computation
+         * @tparam Loss The loss scalar type
          * @tparam Layers The types of the layers
+         * @param loss The loss node used to compute gradients via autodiff::gradient()
          * @param layers The layers
          */
-        template<typename Layers>
-        inline void backward(Layers && layers) {
-            Recursor<std::tuple_size<typename std::decay<Layers>::type>::value>::backward(std::forward<Layers>(layers));
+        template<typename Loss, typename Layers>
+        inline void backward(const Loss& loss, Layers && layers) {
+            Recursor<std::tuple_size<typename std::decay<Layers>::type>::value>::backward(loss, std::forward<Layers>(layers));
         }
 
         /**
@@ -149,11 +151,9 @@ namespace neural {
                 throw std::runtime_error("No optimizer attached - cannot perform backwards pass");
             }
 
-            // Compute and store partial derivatives with respect to the loss
-            loss.grad();
-
-            // Perform weight updates
-            detail::backward(m_layers);
+            // Thread the loss through all layers so each can call autodiff::gradient()
+            // to compute its own parameter gradients and update weights.
+            detail::backward(loss, m_layers);
         }
 
     private:

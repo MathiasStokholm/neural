@@ -44,8 +44,7 @@ namespace neural {
             m_weights.template setRandom<GlorotNormal<Dtype, InputSize, NumNeurons>>();
 
             if (HasBias) {
-                // Use a per-element loop so that each bias gets its own
-                // independent expression node (and its own gradient storage).
+                // Initialize biases to zero; each element gets its own expression node.
                 for (unsigned int i = 0; i < NumNeurons; i++) {
                     m_biases(0, i) = Dtype(0);
                 }
@@ -92,24 +91,41 @@ namespace neural {
         }
 
         template<class Q = Dtype>
-        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights() {
+        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights(const Q& loss) {
             if (!m_optimizerAttached) {
                 throw std::runtime_error("No optimizer attached - cannot update weights");
             }
 
-            // Compute gradient-based updates
-            const auto weightsUpdate = m_weightsOptimizer->update(m_weights);
+            // Map the flat weight storage to an Eigen vector so autodiff::gradient()
+            // can compute ∂loss/∂w for all weights in a single pass.
+            Eigen::Map<Eigen::Matrix<Q, InputSize * NumNeurons, 1>> wMap(m_weights.data());
+            const auto wGradVec = autodiff::gradient(loss, wMap);
 
-            // Re-assign each weight as a fresh independent leaf so the next forward
-            // pass builds a clean computation graph and getGradient() can read adj().
+            // Pack the gradient vector into a GradTensor for the optimizer.
+            using WGradTensor = Tensor<double, InputSize, NumNeurons>;
+            WGradTensor wGrad;
+            Eigen::Map<Eigen::Matrix<double, InputSize * NumNeurons, 1>>(wGrad.data()) = wGradVec;
+
+            const auto wUpdate = m_weightsOptimizer->update(wGrad);
+
+            // Apply the weight update.  Constructing a fresh Q from a scalar resets each
+            // weight to an independent leaf, keeping the next forward pass's graph clean.
             for (unsigned int i = 0; i < InputSize * NumNeurons; i++) {
-                m_weights.data()[i] = Derivative(m_weights.data()[i].val() - weightsUpdate.data()[i]);
+                m_weights.data()[i] = Q(autodiff::val(m_weights.data()[i]) - wUpdate.data()[i]);
             }
 
             if (HasBias) {
-                const auto biasUpdate = m_biasOptimizer->update(m_biases);
+                Eigen::Map<Eigen::Matrix<Q, NumNeurons, 1>> bMap(m_biases.data());
+                const auto bGradVec = autodiff::gradient(loss, bMap);
+
+                using BGradTensor = Tensor<double, 1, NumNeurons>;
+                BGradTensor bGrad;
+                Eigen::Map<Eigen::Matrix<double, NumNeurons, 1>>(bGrad.data()) = bGradVec;
+
+                const auto bUpdate = m_biasOptimizer->update(bGrad);
+
                 for (unsigned int i = 0; i < NumNeurons; i++) {
-                    m_biases.data()[i] = Derivative(m_biases.data()[i].val() - biasUpdate.data()[i]);
+                    m_biases.data()[i] = Q(autodiff::val(m_biases.data()[i]) - bUpdate.data()[i]);
                 }
             }
         }

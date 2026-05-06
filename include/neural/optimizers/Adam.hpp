@@ -11,7 +11,6 @@
 #define NEURAL_ADAM_HPP
 
 #include <neural/optimizers/Optimizer.hpp>
-#include <neural/util/Gradient.hpp>
 
 namespace neural {
     /**
@@ -29,9 +28,7 @@ namespace neural {
             m_secondMoment.setZero();
         }
 
-        GradTensor update(const Tensor &tensor) override {
-            const auto grad = tensor.unaryExpr(std::cref(getGradient));
-
+        GradTensor update(const GradTensor &grad) override {
             // Calculate first and second moments (mean and uncentered variance)
             m_firstMoment = m_beta1 * m_firstMoment + (1 - m_beta1) * grad;
             m_secondMoment = m_beta2 * m_secondMoment + (1 - m_beta2) * grad.square();

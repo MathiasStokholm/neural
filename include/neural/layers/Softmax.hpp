@@ -45,7 +45,7 @@ namespace neural {
         }
 
         template<class Q = Dtype>
-        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights() {
+        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights(const Q& /*loss*/) {
             // No weights to adjust here
         }
     };

@@ -106,7 +106,6 @@ TEST_CASE("Testing net forward", "[net_forward]" ) {
 
 #ifdef AUTO_DIFF_ENABLED
 TEST_CASE("Testing net backward", "[net_backward]" ) {
-    neural::GradientGuard guard;
     constexpr int inputSize = 10;
     constexpr int batchSize = 1;
 
@@ -124,17 +123,19 @@ TEST_CASE("Testing net backward", "[net_backward]" ) {
     const auto result = net.forward(x);
 
     // Evaluate gradient (loss is just sum)
-    Eigen::Tensor<neural::Derivative, 0> loss = result.sum();
-    net.backward(loss(0));
+    Eigen::Tensor<neural::Derivative, 0> lossT = result.sum();
+    net.backward(lossT(0));
+
+    // Use autodiff::gradient to obtain ∂loss/∂x
+    Eigen::Map<Eigen::Matrix<neural::Derivative, inputSize, 1>> xMap(x.data());
+    const auto xGrads = autodiff::gradient(lossT(0), xMap);
 
     for (unsigned int i = 0; i < inputSize; i++) {
-        const auto grad = x(i).adj();
-        REQUIRE( expectedDerivativesX(i) == grad );
+        REQUIRE( expectedDerivativesX(i) == xGrads(i) );
     }
 }
 
 TEST_CASE("Testing ReLu", "[relu]" ) {
-    neural::GradientGuard guard;
     constexpr int inputSize = 10;
     constexpr int batchSize = 1;
 
@@ -147,14 +148,14 @@ TEST_CASE("Testing ReLu", "[relu]" ) {
     neural::Relu<neural::Derivative, inputSize, batchSize> relu;
     const auto d = relu.forward(x);
 
-    // Evaluate gradient
+    // Use autodiff::gradient to compute ∂(sum)/∂x
     Eigen::Tensor<neural::Derivative, 0> y = d.sum();
-    y(0).grad();
+    Eigen::Map<Eigen::Matrix<neural::Derivative, inputSize, 1>> xMap(x.data());
+    const auto xGrads = autodiff::gradient(y(0), xMap);
 
     // Check derivatives
     for (unsigned int i = 0; i < inputSize; i++) {
-        const auto grad = x(i).adj();
-        REQUIRE( expectedDerivativesX(i) == grad );
+        REQUIRE( expectedDerivativesX(i) == xGrads(i) );
     }
 }
 
@@ -178,19 +179,15 @@ TEST_CASE("Testing backprop", "[backprop]" ) {
     linear2.attachOptimizer(optimizerFactory);
 
     // Perform operations
-    Eigen::Tensor<neural::Derivative, 0> y;
     for (int i=0; i<10; i++) {
-        neural::GradientGuard guard;
         const auto result1 = linear.forward(input);
         const auto result2 = linear2.forward(result1);
         const auto output = relu.forward(result2);
         std::cout << "ReLu results: " << output << std::endl;
 
-        y = output.sum();
-        y(0).grad();
-
-        linear.updateWeights();
-        linear2.updateWeights();
+        Eigen::Tensor<neural::Derivative, 0> lossT = output.sum();
+        linear.updateWeights(lossT(0));
+        linear2.updateWeights(lossT(0));
     }
 }
 
@@ -224,8 +221,6 @@ TEST_CASE("Testing XOR", "[xor]" ) {
 
     // Train
     for (int i = 0; i < 500; i++) {
-        neural::GradientGuard guard;
-
         // Get input/output tensors
         int index = rng.getNext();
         Eigen::array<int, 2> offsets = {index, 0};
@@ -251,7 +246,6 @@ TEST_CASE("Testing XOR", "[xor]" ) {
 
     // Test network
     for (int i = 0; i < 4; i++) {
-        neural::GradientGuard guard;
         Eigen::array<int, 2> offsets = {i, 0};
         Eigen::array<int, 2> extents = {1, inputSize};
         InputTensor x = xs.slice(offsets, extents).eval();
@@ -261,7 +255,7 @@ TEST_CASE("Testing XOR", "[xor]" ) {
         OutputTensor y = ys.slice(offsets, extents).eval();
 
         const auto prediction = net.forward(x);
-        REQUIRE( static_cast<int>(std::round(prediction(0).val())) == static_cast<int>(y(0).val()) );
+        REQUIRE( static_cast<int>(std::round(neural::val(prediction(0)))) == static_cast<int>(neural::val(y(0))) );
     }
 }
 #endif //AUTO_DIFF_ENABLED

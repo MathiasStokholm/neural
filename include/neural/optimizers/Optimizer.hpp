@@ -22,7 +22,7 @@ namespace neural {
     public:
         using GradTensor = neural::Tensor<double, Tensor::BatchSize, Tensor::ChannelSize>;
 
-        virtual GradTensor update(const Tensor &tensor) = 0;
+        virtual GradTensor update(const GradTensor &grad) = 0;
     };
 }
 
