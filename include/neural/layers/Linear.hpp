@@ -99,9 +99,10 @@ namespace neural {
             const auto wUpdate = m_weightsOptimizer->update(wGrad);
 
             // Extract current values, subtract update, reset to fresh independent leaves.
-            const Eigen::Matrix<double, InputSize * NumNeurons, 1> newWVals =
+            using WVec = Eigen::Matrix<double, InputSize * NumNeurons, 1>;
+            const WVec newWVals =
                 wMap.template cast<double>() -
-                Eigen::Map<const Eigen::Matrix<double, InputSize * NumNeurons, 1>>(wUpdate.data());
+                Eigen::Map<const WVec>(wUpdate.data());
             wMap = newWVals.template cast<Q>();
 
             if (HasBias) {
@@ -114,9 +115,10 @@ namespace neural {
 
                 const auto bUpdate = m_biasOptimizer->update(bGrad);
 
-                const Eigen::Matrix<double, NumNeurons, 1> newBVals =
+                using BVec = Eigen::Matrix<double, NumNeurons, 1>;
+                const BVec newBVals =
                     bMap.template cast<double>() -
-                    Eigen::Map<const Eigen::Matrix<double, NumNeurons, 1>>(bUpdate.data());
+                    Eigen::Map<const BVec>(bUpdate.data());
                 bMap = newBVals.template cast<Q>();
             }
         }
