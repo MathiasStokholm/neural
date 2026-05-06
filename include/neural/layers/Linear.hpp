@@ -97,10 +97,20 @@ namespace neural {
                 throw std::runtime_error("No optimizer attached - cannot update weights");
             }
 
-            // Backprop is available, adjust weights and biases
-            m_weights -= m_weightsOptimizer->update(m_weights);
+            // Compute gradient-based updates
+            const auto weightsUpdate = m_weightsOptimizer->update(m_weights);
+
+            // Re-assign each weight as a fresh independent leaf so the next forward
+            // pass builds a clean computation graph and getGradient() can read adj().
+            for (unsigned int i = 0; i < InputSize * NumNeurons; i++) {
+                m_weights.data()[i] = Derivative(m_weights.data()[i].val() - weightsUpdate.data()[i]);
+            }
+
             if (HasBias) {
-                m_biases -= m_biasOptimizer->update(m_biases);
+                const auto biasUpdate = m_biasOptimizer->update(m_biases);
+                for (unsigned int i = 0; i < NumNeurons; i++) {
+                    m_biases.data()[i] = Derivative(m_biases.data()[i].val() - biasUpdate.data()[i]);
+                }
             }
         }
 
