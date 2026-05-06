@@ -27,53 +27,42 @@ namespace detail {
 using ExprPtr = autodiff::reverse::detail::ExprPtr<double>;
 
 /**
- * @brief Custom leaf expression node that owns its gradient storage.
+ * @brief Leaf expression node for an independent (differentiable) variable.
  *
- * Unlike autodiff's IndependentVariableExpr which stores only a raw `double*`
- * gradPtr (set via bind_value), LeafExpr holds a `shared_ptr<double>` so the
- * gradient memory is kept alive as long as any expression-tree node (e.g. a
- * SubExpr built during weight update) holds a reference to this LeafExpr –
- * even after the originating `Derivative` object has been destroyed.
- *
- * This prevents the heap-use-after-free that occurs when Eigen implicitly
- * promotes `double` values to temporary `Derivative` objects during tensor
- * operations such as `Tensor<Derivative> -= Tensor<double>`.
+ * Stores the adjoint directly as a plain double member.  Because LeafExpr is
+ * itself reference-counted via ExprPtr (shared_ptr<Expr<double>>), the adjoint
+ * lives exactly as long as any expression node in the tree holds a reference —
+ * avoiding the use-after-free that would occur with a raw double* (gradPtr).
  */
 struct LeafExpr : autodiff::reverse::detail::Expr<double> {
-    std::shared_ptr<double> adj;  ///< gradient storage, co-owned with Derivative::m_adj
+    double adj = 0.0;
 
-    explicit LeafExpr(double v, std::shared_ptr<double> a)
-        : autodiff::reverse::detail::Expr<double>(v), adj(std::move(a)) {}
+    explicit LeafExpr(double v) : autodiff::reverse::detail::Expr<double>(v) {}
 
-    void propagate(const double& wprime) override {
-        *adj += wprime;
-    }
-    void propagatex(const ExprPtr& /*wprime*/) override {
-        // first-order only – higher-order not needed
-    }
+    void propagate(const double& wprime) override { adj += wprime; }
+    void propagatex(const ExprPtr& /*wprime*/) override {}
     void update() override {}
 };
 
-// Thread-local registry of weak_ptrs to every leaf gradient storage.
-// resetAllAdjs() zeros all live entries and prunes expired ones.
-inline std::vector<std::weak_ptr<double>>& adjRegistry() {
-    static thread_local std::vector<std::weak_ptr<double>> registry;
+// Thread-local registry of weak_ptrs to leaf nodes.
+// resetAllLeaves() zeros every live leaf's adjoint and prunes expired entries.
+inline std::vector<std::weak_ptr<LeafExpr>>& leafRegistry() {
+    static thread_local std::vector<std::weak_ptr<LeafExpr>> registry;
     return registry;
 }
 
-inline void registerAdj(const std::shared_ptr<double>& adj) {
-    adjRegistry().push_back(adj);
+inline void registerLeaf(const std::shared_ptr<LeafExpr>& leaf) {
+    leafRegistry().push_back(leaf);
 }
 
-inline void resetAllAdjs() {
-    auto& reg = adjRegistry();
+inline void resetAllLeaves() {
+    auto& reg = leafRegistry();
     std::size_t dst = 0;
     for (std::size_t i = 0; i < reg.size(); ++i) {
         if (auto sp = reg[i].lock()) {
-            *sp = 0.0;
+            sp->adj = 0.0;
             reg[dst++] = std::move(reg[i]);
         }
-        // expired entries are simply dropped
     }
     reg.resize(dst);
 }
@@ -82,24 +71,16 @@ inline void resetAllAdjs() {
 /**
  * @brief Differentiable scalar type used when training neural networks.
  *
- * Each leaf (created from a numeric value) owns a LeafExpr expression node
- * that co-owns the gradient storage (shared_ptr<double>) with Derivative::m_adj.
- * This means the gradient memory stays alive as long as ANY expression-tree
- * node retains a reference to the LeafExpr, preventing use-after-free when
- * Eigen creates and destroys temporary Derivative objects during mixed
- * Derivative/double tensor operations.
- *
- * Copies share the same expression node and the same gradient storage, so
- * reading adj() on the original or any copy always gives the same value.
- *
- * Intermediate results (produced by arithmetic) carry a freshly-allocated,
- * unused m_adj; nobody writes to it and adj() on an intermediate is
- * meaningless (but harmless).
+ * Wraps a single ExprPtr (shared_ptr to an autodiff expression node).
+ * Leaves created from numeric values own a LeafExpr whose `adj` member
+ * accumulates the gradient during backpropagation.  Copies share the same
+ * node, so adj() always reads the same gradient regardless of which copy is
+ * queried.  Intermediate results (produced by arithmetic) hold a non-leaf
+ * ExprPtr; calling adj() on them is undefined behaviour.
  */
 class Derivative {
 public:
-    std::shared_ptr<double> m_adj;   ///< gradient storage (shared with LeafExpr and copies)
-    detail::ExprPtr m_expr;          ///< autodiff expression node
+    detail::ExprPtr m_expr;  ///< autodiff expression node (leaf or intermediate)
 
     // ------------------------------------------------------------------ //
     //  Constructors
@@ -111,14 +92,13 @@ public:
     /// Leaf constructed from any arithmetic type
     template<typename U,
              typename = typename std::enable_if<std::is_arithmetic<U>::value>::type>
-    Derivative(U val)
-        : m_adj(std::make_shared<double>(0.0))
-        , m_expr(std::make_shared<detail::LeafExpr>(static_cast<double>(val), m_adj))
-    {
-        detail::registerAdj(m_adj);
+    Derivative(U val) {
+        auto leaf = std::make_shared<detail::LeafExpr>(static_cast<double>(val));
+        detail::registerLeaf(leaf);
+        m_expr = std::move(leaf);
     }
 
-    /// Copy: share expression node and gradient storage
+    /// Copy: share expression node (and its gradient storage)
     Derivative(const Derivative& other) = default;
 
     // ------------------------------------------------------------------ //
@@ -131,9 +111,9 @@ public:
     template<typename U,
              typename = typename std::enable_if<std::is_arithmetic<U>::value>::type>
     Derivative& operator=(U val) {
-        m_adj  = std::make_shared<double>(0.0);
-        m_expr = std::make_shared<detail::LeafExpr>(static_cast<double>(val), m_adj);
-        detail::registerAdj(m_adj);
+        auto leaf = std::make_shared<detail::LeafExpr>(static_cast<double>(val));
+        detail::registerLeaf(leaf);
+        m_expr = std::move(leaf);
         return *this;
     }
 
@@ -144,13 +124,15 @@ public:
     /// Current value of this node in the expression tree
     double val() const { return m_expr->val; }
 
-    /// Accumulated adjoint (meaningful only on leaf nodes after grad())
-    double adj() const { return *m_adj; }
+    /// Accumulated adjoint – valid only on leaf nodes after grad()
+    double adj() const {
+        return static_cast<const detail::LeafExpr*>(m_expr.get())->adj;
+    }
 
     /// Trigger reverse-mode backpropagation from this node.
-    /// Resets all registered leaf adjoints to zero first.
+    /// Resets all live leaf adjoints to zero first.
     void grad() const {
-        detail::resetAllAdjs();
+        detail::resetAllLeaves();
         m_expr->propagate(1.0);
     }
 
@@ -249,10 +231,7 @@ public:
 
     /// Construct a dependent (intermediate) node directly from an expression.
     /// Used internally by arithmetic operators and math functions.
-    explicit Derivative(detail::ExprPtr e)
-        : m_expr(std::move(e))
-        , m_adj(std::make_shared<double>(0.0))
-    {}
+    explicit Derivative(detail::ExprPtr e) : m_expr(std::move(e)) {}
 };
 
 // ---------------------------------------------------------------------- //
