@@ -61,24 +61,14 @@ namespace neural {
         }
 
         OutputTensor forward(const InputTensor &input) const {
-            // Create output
+            // Map input and weights to Eigen matrices (zero-copy) and compute the
+            // full batch matrix multiplication in one call.
+            const auto inputMat    = ConstTensorToMatrix<BatchSize, InputSize>(input);
+            const auto weightsMat  = ConstTensorToMatrix<InputSize, NumNeurons>(m_weights);
+
             OutputTensor result;
-
-            // This is the standard Eigen::Tensor way of doing generalized matrix multiplication, but
-            // the auto diff libraries don't like this yet!
-            // static Eigen::array<Eigen::IndexPair<int>, 1> productDims = {Eigen::IndexPair<int>(1, 0)};
-            // const OutputTensor result = input.contract(m_weights, productDims);
-
-            // Instead, we apply the operations to each input in batch
-            const auto mappedWeights = ConstTensorToMatrix<InputSize, NumNeurons>(m_weights).transpose();
-            for (unsigned int i = 0; i < BatchSize; i++) {
-                // Map tensors to Eigen matrices
-                const auto mappedTensor = ConstTensorSliceToVector<InputSize, BatchSize>(input, i);
-                auto mappedOutput = TensorSliceToVector<NumNeurons, BatchSize>(result, i);
-
-                // Perform y1 = Ax
-                mappedOutput.noalias() = mappedWeights * mappedTensor;
-            }
+            Eigen::Map<Eigen::Matrix<Dtype, BatchSize, NumNeurons>>(result.data()) =
+                inputMat * weightsMat;
 
             if (!HasBias) {
                 return result;
@@ -108,11 +98,11 @@ namespace neural {
 
             const auto wUpdate = m_weightsOptimizer->update(wGrad);
 
-            // Apply the weight update.  Constructing a fresh Q from a scalar resets each
-            // weight to an independent leaf, keeping the next forward pass's graph clean.
-            for (unsigned int i = 0; i < InputSize * NumNeurons; i++) {
-                m_weights.data()[i] = Q(autodiff::val(m_weights.data()[i]) - wUpdate.data()[i]);
-            }
+            // Extract current values, subtract update, reset to fresh independent leaves.
+            const Eigen::Matrix<double, InputSize * NumNeurons, 1> newWVals =
+                wMap.template cast<double>() -
+                Eigen::Map<const Eigen::Matrix<double, InputSize * NumNeurons, 1>>(wUpdate.data());
+            wMap = newWVals.template cast<Q>();
 
             if (HasBias) {
                 Eigen::Map<Eigen::Matrix<Q, NumNeurons, 1>> bMap(m_biases.data());
@@ -124,9 +114,10 @@ namespace neural {
 
                 const auto bUpdate = m_biasOptimizer->update(bGrad);
 
-                for (unsigned int i = 0; i < NumNeurons; i++) {
-                    m_biases.data()[i] = Q(autodiff::val(m_biases.data()[i]) - bUpdate.data()[i]);
-                }
+                const Eigen::Matrix<double, NumNeurons, 1> newBVals =
+                    bMap.template cast<double>() -
+                    Eigen::Map<const Eigen::Matrix<double, NumNeurons, 1>>(bUpdate.data());
+                bMap = newBVals.template cast<Q>();
             }
         }
 

@@ -24,17 +24,6 @@ using Derivative = autodiff::var;
 /// Return the scalar value stored in a Derivative node.
 inline double val(const Derivative& d) { return autodiff::val(d); }
 
-/**
- * @brief RAII guard retained for API compatibility.
- *
- * With the autodiff::gradient() approach, each gradient computation is
- * self-contained and requires no global state to reset between passes.
- */
-struct GradientGuard {
-    GradientGuard()  = default;
-    ~GradientGuard() = default;
-};
-
 } // namespace neural
 
 #else // AUTO_DIFF_ENABLED not set
