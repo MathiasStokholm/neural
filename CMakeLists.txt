@@ -20,12 +20,13 @@ if (NEURAL_INFERENCE_ONLY)
     find_package(Eigen3 REQUIRED)
     target_include_directories(${PROJECT_NAME} INTERFACE ${EIGEN3_INCLUDE_DIR})
 else()
-    # AutoDiff (training) using bundled autodiff (header-only) and Eigen
+    # AutoDiff (training) using autodiff (header-only) and Eigen
+    set(AUTODIFF_PATH "" CACHE STRING "Path to the autodiff repository")
     find_package(Eigen3 REQUIRED)
     add_library(AUTODIFF INTERFACE)
     target_include_directories(AUTODIFF INTERFACE
             ${EIGEN3_INCLUDE_DIR}
-            ${CMAKE_CURRENT_SOURCE_DIR}
+            ${AUTODIFF_PATH}
             )
 
     # Use autodiff for auto diff in Neural

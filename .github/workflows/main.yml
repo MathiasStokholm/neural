@@ -20,6 +20,11 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+      with:
+        repository: autodiff/autodiff
+        ref: v1.1.2
+        path: autodiff
     # Install dependencies
     - name: Dependencies
       run: sudo apt update && sudo apt install -y libeigen3-dev cmake
@@ -27,7 +32,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -D CMAKE_BUILD_TYPE=Release -D NEURAL_BUILD_TESTS=ON ..
+        cmake -D CMAKE_BUILD_TYPE=Release -D NEURAL_BUILD_TESTS=ON -D AUTODIFF_PATH=$GITHUB_WORKSPACE/autodiff ..
         make -j8
         ./bin/neural_tests
 
