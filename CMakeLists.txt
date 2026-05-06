@@ -7,8 +7,7 @@ project(neural)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 
 # Define options
-set(STAN_MATH_PATH "/home/mathias/software/math" CACHE STRING "Path to the Stan Math repository")
-option(NEURAL_INFERENCE_ONLY "Whether to turn off AutoDiff (training), this removes Stan Math as a dependency" OFF)
+option(NEURAL_INFERENCE_ONLY "Whether to turn off AutoDiff (training), this removes autodiff as a dependency" OFF)
 option(NEURAL_BUILD_TESTS "Whether to build the Neural tests" OFF)
 option(NEURAL_BUILD_EXAMPLES "Whether to build the Neural examples" OFF)
 
@@ -21,21 +20,17 @@ if (NEURAL_INFERENCE_ONLY)
     find_package(Eigen3 REQUIRED)
     target_include_directories(${PROJECT_NAME} INTERFACE ${EIGEN3_INCLUDE_DIR})
 else()
-    # AutoDiff (training) using Stan Math and dependencies
-    add_library(STAN_MATH INTERFACE)
-    target_include_directories(STAN_MATH
-            INTERFACE
-            ${STAN_MATH_PATH}
-            ${STAN_MATH_PATH}/lib/cvodes_2.9.0/include
-            ${STAN_MATH_PATH}/lib/eigen_3.3.3
-            ${STAN_MATH_PATH}/lib/boost_1.64.0
+    # AutoDiff (training) using autodiff (header-only) and Eigen
+    set(AUTODIFF_PATH "" CACHE STRING "Path to the autodiff repository")
+    find_package(Eigen3 REQUIRED)
+    add_library(AUTODIFF INTERFACE)
+    target_include_directories(AUTODIFF INTERFACE
+            ${EIGEN3_INCLUDE_DIR}
+            ${AUTODIFF_PATH}
             )
 
-    # Flag used to silence warnings in Boost 1.64
-    target_compile_options(STAN_MATH INTERFACE -Wno-unused-local-typedefs -Wunused-function)
-
-    # Use Stan Math for auto diff in Neural
-    target_link_libraries(${PROJECT_NAME} INTERFACE STAN_MATH)
+    # Use autodiff for auto diff in Neural
+    target_link_libraries(${PROJECT_NAME} INTERFACE AUTODIFF)
     target_compile_definitions(${PROJECT_NAME} INTERFACE -DAUTO_DIFF_ENABLED)
 endif()
 
@@ -43,9 +38,9 @@ if (NEURAL_BUILD_EXAMPLES)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/examples)
 endif()
 
-# Set C++11 and warning flags
+# Set C++17 (required by autodiff) and warning flags
 target_compile_options(${PROJECT_NAME} INTERFACE -Wall)
-target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_11)
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
 
 # Handle building Neural tests
 if (NEURAL_BUILD_TESTS)

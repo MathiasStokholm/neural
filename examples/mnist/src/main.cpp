@@ -98,8 +98,6 @@ int main(int argc, char* argv[]) {
         // Step over all test data
         std::vector<double> accuracies = {};
         for (unsigned int i = 0; i < testSteps; i++) {
-            neural::GradientGuard guard;
-
             // Get input/output tensors
             InputTensor x;
             OutputTensor y;
@@ -109,7 +107,7 @@ int main(int argc, char* argv[]) {
             const auto prediction = net.forward(x);
 
             // Determine error
-            accuracies.emplace_back(error.accuracy(prediction, y).val());
+            accuracies.emplace_back(neural::val(error.accuracy(prediction, y)));
         }
         const auto accuracy = std::accumulate(accuracies.begin(), accuracies.end(), 0.0) / accuracies.size();
         std::cout << "Mean test accuracy: " << accuracy << std::endl;
@@ -120,8 +118,6 @@ int main(int argc, char* argv[]) {
         // Step over all training data
         std::vector<double> losses = {};
         for (unsigned int i = 0; i < trainSteps; i++) {
-            neural::GradientGuard guard;
-
             // Get input/output tensors
             InputTensor x;
             OutputTensor y;
@@ -132,7 +128,7 @@ int main(int argc, char* argv[]) {
 
             // Determine error
             auto loss = error.compute(prediction, y);
-            losses.emplace_back(loss.val());
+            losses.emplace_back(neural::val(loss));
 
             // Update weights
             net.backward(loss);

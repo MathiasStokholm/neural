@@ -44,7 +44,10 @@ namespace neural {
             m_weights.template setRandom<GlorotNormal<Dtype, InputSize, NumNeurons>>();
 
             if (HasBias) {
-                m_biases.setConstant(0);
+                // Initialize biases to zero; each element gets its own expression node.
+                for (unsigned int i = 0; i < NumNeurons; i++) {
+                    m_biases(0, i) = Dtype(0);
+                }
             }
         }
 
@@ -58,24 +61,14 @@ namespace neural {
         }
 
         OutputTensor forward(const InputTensor &input) const {
-            // Create output
+            // Map input and weights to Eigen matrices (zero-copy) and compute the
+            // full batch matrix multiplication in one call.
+            const auto inputMat    = ConstTensorToMatrix<BatchSize, InputSize>(input);
+            const auto weightsMat  = ConstTensorToMatrix<InputSize, NumNeurons>(m_weights);
+
             OutputTensor result;
-
-            // This is the standard Eigen::Tensor way of doing generalized matrix multiplication, but
-            // the auto diff libraries don't like this yet!
-            // static Eigen::array<Eigen::IndexPair<int>, 1> productDims = {Eigen::IndexPair<int>(1, 0)};
-            // const OutputTensor result = input.contract(m_weights, productDims);
-
-            // Instead, we apply the operations to each input in batch
-            const auto mappedWeights = ConstTensorToMatrix<InputSize, NumNeurons>(m_weights).transpose();
-            for (unsigned int i = 0; i < BatchSize; i++) {
-                // Map tensors to Eigen matrices
-                const auto mappedTensor = ConstTensorSliceToVector<InputSize, BatchSize>(input, i);
-                auto mappedOutput = TensorSliceToVector<NumNeurons, BatchSize>(result, i);
-
-                // Perform y1 = Ax
-                mappedOutput.noalias() = mappedWeights * mappedTensor;
-            }
+            Eigen::Map<Eigen::Matrix<Dtype, BatchSize, NumNeurons>>(result.data()) =
+                inputMat * weightsMat;
 
             if (!HasBias) {
                 return result;
@@ -88,15 +81,45 @@ namespace neural {
         }
 
         template<class Q = Dtype>
-        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights() {
+        typename std::enable_if<std::is_same<Q, Derivative>::value, void>::type updateWeights(const Q& loss) {
             if (!m_optimizerAttached) {
                 throw std::runtime_error("No optimizer attached - cannot update weights");
             }
 
-            // Backprop is available, adjust weights and biases
-            m_weights -= m_weightsOptimizer->update(m_weights);
+            // Map the flat weight storage to an Eigen vector so autodiff::gradient()
+            // can compute ∂loss/∂w for all weights in a single pass.
+            Eigen::Map<Eigen::Matrix<Q, InputSize * NumNeurons, 1>> wMap(m_weights.data());
+            const auto wGradVec = autodiff::gradient(loss, wMap);
+
+            // Pack the gradient vector into a GradTensor for the optimizer.
+            using WGradTensor = Tensor<double, InputSize, NumNeurons>;
+            WGradTensor wGrad;
+            Eigen::Map<Eigen::Matrix<double, InputSize * NumNeurons, 1>>(wGrad.data()) = wGradVec;
+
+            const auto wUpdate = m_weightsOptimizer->update(wGrad);
+
+            // Extract current values, subtract update, reset to fresh independent leaves.
+            using WVec = Eigen::Matrix<double, InputSize * NumNeurons, 1>;
+            const WVec newWVals =
+                wMap.template cast<double>() -
+                Eigen::Map<const WVec>(wUpdate.data());
+            wMap = newWVals.template cast<Q>();
+
             if (HasBias) {
-                m_biases -= m_biasOptimizer->update(m_biases);
+                Eigen::Map<Eigen::Matrix<Q, NumNeurons, 1>> bMap(m_biases.data());
+                const auto bGradVec = autodiff::gradient(loss, bMap);
+
+                using BGradTensor = Tensor<double, 1, NumNeurons>;
+                BGradTensor bGrad;
+                Eigen::Map<Eigen::Matrix<double, NumNeurons, 1>>(bGrad.data()) = bGradVec;
+
+                const auto bUpdate = m_biasOptimizer->update(bGrad);
+
+                using BVec = Eigen::Matrix<double, NumNeurons, 1>;
+                const BVec newBVals =
+                    bMap.template cast<double>() -
+                    Eigen::Map<const BVec>(bUpdate.data());
+                bMap = newBVals.template cast<Q>();
             }
         }
 
